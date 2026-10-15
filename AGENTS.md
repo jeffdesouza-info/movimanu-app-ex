@@ -4,6 +4,7 @@
 
 - Leia `constitution.md` na raiz, o `README.md` e os artefatos SDD da tarefa antes de atuar.
 - Siga a sequência `spec.md` (requisitos e aceite), `plan.md` (solução técnica) e `tasks.md` (execução). Implemente somente tarefas com escopo definido e autorizado.
+- É proibido registrar referências a versões Git em qualquer artefato gerado ou atualizado, incluindo hashes, identificadores de commits, tags ou links vinculados a uma revisão do repositório. Referencie documentos do projeto somente por seus caminhos.
 - Respeite o modo solicitado: planejamento, documentação ou implementação. Esclareça lacunas e conflitos que afetem requisitos antes de implementar o comportamento envolvido.
 - Preserve alterações existentes do usuário e limite o trabalho ao escopo solicitado. Commits, push, pull requests e deploy exigem autorização explícita.
 - Ao concluir, informe arquivos alterados, validações executadas, resultados e impedimentos. Documentação e respostas devem ser em português brasileiro.

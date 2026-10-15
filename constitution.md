@@ -4,6 +4,7 @@
 
 - O projeto adota Spec-Driven Development: requisitos e critérios de aceite orientam o planejamento, as tarefas, a implementação e sua validação.
 - Regras de negócio e decisões pendentes devem ser esclarecidas e registradas antes da implementação correspondente. Mudanças nestes princípios exigem decisão explícita do responsável pelo projeto e atualização dos artefatos afetados.
+- É proibido registrar referências a versões Git nos artefatos do projeto. Documentos do projeto devem ser referenciados somente por seus caminhos.
 
 ## 2. Arquitetura e projeto de código
 
