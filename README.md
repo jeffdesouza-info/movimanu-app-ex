@@ -78,4 +78,8 @@ Credenciais podem ser sobrescritas com `H2_USER` e `H2_PASSWORD`. O perfil `clou
 - `PRODUTO_COSIF`: chave primária composta por `COD_PRODUTO` e `COD_COSIF`; `COD_PRODUTO` referencia `PRODUTO`.
 - `MOVIMENTO_MANUAL`: chave primária composta por mês, ano, número do lançamento, produto e COSIF; o par produto/COSIF referencia `PRODUTO_COSIF`.
 
-O tipo `SMALLDATETIME` do modelo original é preservado no H2 por meio de um domínio SQL sobre `TIMESTAMP(0)`.
+No H2, `SMALLDATETIME` é representado por um domínio SQL sobre `TIMESTAMP(0)`, definido em `backend/movimento-manual-service/src/main/resources/db/migration/V1__create_manual_movement_schema.sql`. A precisão `(0)` indica ausência de casas fracionárias nos segundos; essa representação ainda admite segundos diferentes de `00`.
+
+A equivalência comportamental de `DAT_MOVIMENTO` depende dos complementos previstos em `specs/001-movimentos-manuais/plan.md`: arredondamento ao minuto no adaptador, segundos em `00`, respeito à faixa de datas de `1900-01-01` a `2079-06-06` e testes de arredondamento e limites, incluindo virada de dia. Na etapa estrutural, essa equivalência permanece pendente de implementação e validação; sua confirmação e as evidências devem ser registradas no README ao concluir T013 de `specs/001-movimentos-manuais/tasks.md`.
+
+Referências técnicas: [TIMESTAMP no H2](https://h2database.com/html/datatypes.html) e [SMALLDATETIME no SQL Server](https://learn.microsoft.com/en-us/sql/t-sql/data-types/smalldatetime-transact-sql).
