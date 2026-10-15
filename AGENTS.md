@@ -24,7 +24,7 @@
 
 ## Validação
 
-- No backend, use JUnit 5 para testes unitários (`*Test`) e Spring Boot Test quando houver integração (`*IT`). Inclua testes nas alterações de comportamento.
+- No backend, use JUnit Jupiter na versão gerenciada pelo Spring Boot, sem sobrescrever essa dependência. Mantenha testes unitários como `*Test` e testes de integração com Spring Boot Test como `*IT`. Inclua testes nas alterações de comportamento.
 - Execute, na raiz, `.\mvnw.cmd test` durante o desenvolvimento e `.\mvnw.cmd clean verify` para a validação final. Em Linux/macOS, use `./mvnw`.
 - O JaCoCo está configurado para exigir 100% de cobertura de linhas, com exclusões de configuração e inicialização. Preserve esse limite e suas exclusões.
 - Configure a execução dos testes `*IT` quando forem adicionados: o POM atual não configura o Maven Failsafe. Confirme quais testes realmente foram executados.
