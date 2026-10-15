@@ -1,30 +1,31 @@
-# Repository Guidelines
+# Diretrizes para agentes — Movimentos Manuais
 
-## Project Structure & Module Organization
+## Fluxo de trabalho
 
-The root Maven project aggregates backend modules. The first bounded context lives in `backend/movimento-manual-service`. Place Java code under `src/main/java/com/antlia/movimanu`, preserving the existing DDD/hexagonal boundaries: `domain` for business rules, `application` for ports and use cases, `infrastructure` for persistence, configuration, and cloud adapters, and `interfaces/rest` for HTTP endpoints. Resources and Flyway migrations belong in `src/main/resources`; tests mirror the package structure under `src/test/java`, split into `unit` and `integration`.
+- Leia `constitution.md` na raiz, o `README.md` e os artefatos SDD da tarefa antes de atuar.
+- Siga a sequência `spec.md` (requisitos e aceite), `plan.md` (solução técnica) e `tasks.md` (execução). Implemente somente tarefas com escopo definido e autorizado.
+- Respeite o modo solicitado: planejamento, documentação ou implementação. Esclareça lacunas e conflitos que afetem requisitos antes de implementar o comportamento envolvido.
+- Preserve alterações existentes do usuário e limite o trabalho ao escopo solicitado. Commits, push, pull requests e deploy exigem autorização explícita.
+- Ao concluir, informe arquivos alterados, validações executadas, resultados e impedimentos. Documentação e respostas devem ser em português brasileiro.
 
-`frontend/movimanu-web/src/app` is currently a scaffold only. Keep reusable UI code in `shared`, application-wide services in `core`, and manual-movement code in `features/manual-movements`. Do not add Node commands until an Angular workspace manifest exists.
+## Organização dos arquivos
 
-## Build, Test, and Development Commands
+- Backend: `backend/movimento-manual-service`, com pacote-base `com.antlia.movimanu` em `src/main/java`.
+- Use `domain` para o modelo e regras de negócio; `application/port` e `application/usecase` para portas e casos de uso; `infrastructure` para persistência, configuração e cloud; `interfaces/rest` para endpoints.
+- Recursos e migrações ficam em `src/main/resources`; testes, em `src/test/java/com/antlia/movimanu/unit` e `integration`.
+- Frontend: `frontend/movimanu-web/src/app`, com `core` para serviços gerais, `shared` para elementos reutilizáveis e `features/manual-movements` para a funcionalidade.
 
-Run commands from the repository root on Windows:
+## Convenções de edição
 
-```powershell
-.\mvnw.cmd clean verify
-.\mvnw.cmd test
-```
+- Siga `.editorconfig`: UTF-8, CRLF, quebra final, sem espaços ao fim das linhas; quatro espaços em Java e dois em XML, YAML, SQL e Markdown.
+- Use pacotes em minúsculas, tipos Java em `PascalCase` e métodos e atributos em `camelCase`, com nomes que expressem sua responsabilidade.
+- Nomeie migrações Flyway como `V<numero>__<descricao_snake_case>.sql`; preserve migrações já aplicadas e faça evoluções em novos scripts.
+- Não versione credenciais, arquivos `.env`, dados locais do H2 ou saídas de build. Quando autorizado a criar commits, use Conventional Commits.
 
-`clean verify` compiles all Maven modules, runs tests, checks JaCoCo coverage, and packages the backend JAR. `test` provides a faster test-only cycle. The project requires Java 21; the wrapper supplies Maven 3.9.16. The backend is not executable yet because Spring Boot repackaging is intentionally skipped until an application entry point is added.
+## Validação
 
-## Coding Style & Naming Conventions
-
-Follow `.editorconfig`: UTF-8, CRLF, final newline, trimmed trailing whitespace, four-space Java indentation, and two-space indentation for XML, YAML, SQL, and Markdown. Use lowercase package names, `PascalCase` Java types, `camelCase` methods and fields, and descriptive suffixes such as `Controller`, `UseCase`, `Repository`, and `Adapter`. Name Flyway scripts `V<number>__<snake_case_description>.sql`.
-
-## Testing Guidelines
-
-Use JUnit 5 and Spring Boot Test. Name unit tests `*Test` and integration tests `*IT`; keep them in their corresponding test packages. Add tests with every behavior change. JaCoCo currently enforces 100% line coverage during `verify`, excluding configuration classes and the application bootstrap class.
-
-## Commit & Pull Request Guidelines
-
-The latest history uses Conventional Commit style (for example, `chore: estrutura inicial do projeto + arquivos de config`). Prefer `feat:`, `fix:`, `test:`, `docs:`, or `chore:` with a short imperative summary. Pull requests should explain scope and design choices, link the relevant issue, list validation commands, and call out schema or configuration changes. Include screenshots for future UI changes and never commit secrets, `.env` files, runtime H2 data, or build output.
+- No backend, use JUnit 5 para testes unitários (`*Test`) e Spring Boot Test quando houver integração (`*IT`). Inclua testes nas alterações de comportamento.
+- Execute, na raiz, `.\mvnw.cmd test` durante o desenvolvimento e `.\mvnw.cmd clean verify` para a validação final. Em Linux/macOS, use `./mvnw`.
+- O JaCoCo está configurado para exigir 100% de cobertura de linhas, com exclusões de configuração e inicialização. Preserve esse limite e suas exclusões.
+- Configure a execução dos testes `*IT` quando forem adicionados: o POM atual não configura o Maven Failsafe. Confirme quais testes realmente foram executados.
+- A base atual ainda não tem inicialização Java nem workspace Angular. Valide comandos de execução e de frontend quando essas estruturas forem implementadas; o build estrutural não comprova funcionamento da aplicação.
