@@ -20,9 +20,10 @@
 
 ## 4. Fidelidade às referências do teste
 
-- O modelo entidade-relacionamento fornecido é a referência para `PRODUTO`, `PRODUTO_COSIF` e `MOVIMENTO_MANUAL`. Devem ser respeitados colunas, cardinalidades, chaves primárias e estrangeiras, inclusive compostas, nulabilidade, tipos, tamanhos e precisão.
+- Use `document/references/enunciado-movimentos-manuais.md` como referência do exercício e `document/references/enunciado-movimentos-manuais.pdf` como apoio visual à disposição da tela.
+- O modelo relacional descrito no enunciado é a referência para `PRODUTO`, `PRODUTO_COSIF` e `MOVIMENTO_MANUAL`. Devem ser respeitados colunas, cardinalidades, chaves primárias e estrangeiras, inclusive compostas, nulabilidade, tipos, tamanhos e precisão.
 - Adaptações de tipos para H2, incluindo `SMALLDATETIME`, exigem documentação e validação da equivalência de comportamento. Valores monetários devem preservar a precisão decimal definida no modelo.
-- O layout fornecido orienta campos, ações e listagem da interface. Comportamentos não descritos nas referências devem ser definidos na especificação funcional.
+- A disposição da tela descrita no enunciado orienta campos, ações e listagem da interface. Comportamentos não descritos nas referências devem ser definidos na especificação funcional.
 
 ## 5. Qualidade verificável
 

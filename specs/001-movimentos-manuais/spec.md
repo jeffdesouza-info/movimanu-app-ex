@@ -4,7 +4,7 @@
 
 Permitir consultar e incluir movimentos manuais pela interface de referência, com API Java 21/Spring Boot e frontend Angular, conforme `constitution.md`.
 
-Esta especificação considera os requisitos fornecidos, a imagem da tela e o esquema de `PRODUTO`, `PRODUTO_COSIF` e `MOVIMENTO_MANUAL` presente no repositório.
+Referência do exercício: `document/references/enunciado-movimentos-manuais.md` (requisitos e modelo relacional) e `document/references/enunciado-movimentos-manuais.pdf` (apoio visual à disposição da tela).
 
 ## 2. Consulta
 

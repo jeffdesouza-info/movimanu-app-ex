@@ -2,6 +2,8 @@
 
 Referências: `AGENTS.md`, `constitution.md`, `README.md`, `spec.md` e `plan.md`.
 
+Referência do exercício: `document/references/enunciado-movimentos-manuais.md` (requisitos e modelo relacional) e `document/references/enunciado-movimentos-manuais.pdf` (apoio visual à disposição da tela).
+
 Executar na ordem abaixo, dentro do escopo autorizado. Incluir os testes unitários pertinentes em cada tarefa e marcar sua conclusão somente após as validações aplicáveis.
 
 ## 1. Preparação

@@ -2,7 +2,8 @@
 
 ## Fluxo de trabalho
 
-- Leia `constitution.md` na raiz, o `README.md` e os artefatos SDD da tarefa antes de atuar.
+- Leia `constitution.md` na raiz, o `README.md`, `document/references/enunciado-movimentos-manuais.md` e os artefatos SDD da tarefa antes de atuar.
+- Consulte `document/references/enunciado-movimentos-manuais.pdf` para apoio visual à disposição da tela; o modelo relacional está descrito no enunciado em Markdown.
 - Siga a sequência `spec.md` (requisitos e aceite), `plan.md` (solução técnica) e `tasks.md` (execução). Implemente somente tarefas com escopo definido e autorizado.
 - É proibido registrar referências a versões Git em qualquer artefato gerado ou atualizado, incluindo hashes, identificadores de commits, tags ou links vinculados a uma revisão do repositório. Referencie documentos do projeto somente por seus caminhos.
 - Respeite o modo solicitado: planejamento, documentação ou implementação. Esclareça lacunas e conflitos que afetem requisitos antes de implementar o comportamento envolvido.
