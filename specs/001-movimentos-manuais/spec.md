@@ -62,7 +62,20 @@ Todos os campos abaixo são obrigatórios.
 - **RN-04:** preencher `COD_USUARIO` automaticamente com o valor fixo `TESTE`.
 - **RN-05:** persistir o movimento integralmente ou rejeitar a inclusão, preservando as chaves e os relacionamentos do modelo.
 
-## 4. Critérios de aceite
+## 4. Respostas da API
+
+- **RF-API-01:** distinguir ausência de resultados, recurso inexistente e entrada inválida conforme a tabela. Os campos dos DTOs, da paginação e dos erros seguem o contrato definido no `plan.md` desta funcionalidade.
+
+| Situação | Resposta |
+| --- | --- |
+| Consulta de produtos sem registros. | `200`, com lista `[]`. |
+| Consulta de COSIFs de produto existente, sem COSIFs vinculados. | `200`, com lista `[]`. |
+| Consulta de COSIFs de produto inexistente. | `404`, no formato de erro contratado. |
+| Inclusão com par produto/COSIF inválido, inclusive produto inexistente. | `400`, sem persistir o movimento. |
+| Consulta de movimentos com `page` negativo ou de formato inválido. | `400`, no formato de erro contratado. |
+| Consulta de movimentos sem registros ou com página além dos resultados. | `200`, com `content=[]`; preservar a página solicitada e os totais reais da consulta. |
+
+## 5. Critérios de aceite
 
 - **CA-01 — Consulta:** ao abrir a tela, carregar o grid com as sete colunas especificadas; janeiro de 2026 deve preceder dezembro de 2025.
 - **CA-02 — Paginação:** com sete resultados, apresentar seis na primeira página e um na segunda, mantendo a ordenação.
@@ -74,3 +87,4 @@ Todos os campos abaixo são obrigatórios.
 - **CA-08 — Limpeza:** com campos preenchidos e opções selecionadas, **Limpar** deve esvaziar os textos e retornar ambas as combo-boxes a **-- Selecione --**, mantendo os campos habilitados durante a inclusão.
 - **CA-09 — Bloqueio durante o envio:** com o POST pendente, impedir a alteração dos seis campos e o acionamento de **Novo**, **Limpar** e **Incluir**, sem disparar outro POST. Em falha confirmada, retornar à inclusão com valores e seleções preservados e restaurar a edição e as ações, mantendo **Incluir** condicionado aos dados válidos. Em sucesso, cumprir CA-05.
 - **CA-10 — Consulta de COSIFs:** ao selecionar um produto, manter Cosif sem seleção e indisponível durante a consulta. Em falha, exibir erro e **Tentar novamente**, preservando os demais valores e seleções. Repetir somente o GET de COSIFs do produto atual; em sucesso, permitir selecionar uma opção sem seleção automática. Ignorar respostas de produto anterior e impedir inclusão enquanto Cosif não tiver seleção válida.
+- **CA-11 — Contrato REST:** validar os casos de RF-API-01 e os nomes e tipos dos campos dos DTOs, da paginação e dos erros definidos no plano. Com sete movimentos, `page=2` retorna `200`, `content=[]`, `page=2`, `size=6`, `totalElements=7` e `totalPages=2`; `page=-1` retorna `400`.
