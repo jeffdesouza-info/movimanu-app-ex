@@ -27,7 +27,8 @@
 ## Validação
 
 - No backend, use JUnit Jupiter na versão gerenciada pelo Spring Boot, sem sobrescrever essa dependência. Mantenha testes unitários como `*Test` e testes de integração com Spring Boot Test como `*IT`. Inclua testes nas alterações de comportamento.
+- Cubra cada regra e caso de uso com testes unitários de sucesso, erro e limites aplicáveis, com asserções sobre resultados e efeitos esperados. Execute-os de forma isolada, usando dublês das dependências quando necessário, sem banco, rede ou contexto Spring. Esses cenários unitários são obrigatórios mesmo quando as mesmas linhas são exercitadas por testes de integração.
 - Execute, na raiz, `.\mvnw.cmd test` durante o desenvolvimento e `.\mvnw.cmd clean verify` para a validação final. Em Linux/macOS, use `./mvnw`.
-- O JaCoCo está configurado para exigir 100% de cobertura de linhas, com exclusões de configuração e inicialização. Preserve esse limite e suas exclusões.
-- Configure a execução dos testes `*IT` quando forem adicionados: o POM atual não configura o Maven Failsafe. Confirme quais testes realmente foram executados.
+- Preserve a exigência de 100% de cobertura de linhas no relatório consolidado do backend, com as exclusões existentes de configuração e inicialização. Gere também relatórios JaCoCo exclusivos dos testes unitários e de integração, com dados de execução separados e as mesmas exclusões, conforme `specs/001-movimentos-manuais/plan.md`.
+- Configure Maven Surefire para os testes `*Test` e Maven Failsafe para os `*IT`, mantendo a execução dos grupos separada até a consolidação da cobertura em `verify`. O POM atual ainda exige a configuração de Failsafe. Confirme por grupo os testes executados, falhos e ignorados, os caminhos dos relatórios e a verificação dos 100% de linhas.
 - A base atual ainda não tem inicialização Java nem workspace Angular. Valide comandos de execução e de frontend quando essas estruturas forem implementadas; o build estrutural não comprova funcionamento da aplicação.

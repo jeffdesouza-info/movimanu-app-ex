@@ -28,4 +28,5 @@
 ## 5. Qualidade verificável
 
 - Toda lógica implementada deve ser coberta por testes unitários, incluindo cenários de sucesso, erro e condições de limite. A cobertura de linhas deve ser acompanhada da verificação efetiva das regras de negócio.
+- No backend, manter a exigência de 100% de cobertura de linhas no relatório consolidado, preservando as exclusões existentes. Disponibilizar evidências separadas de execução e cobertura para testes unitários e de integração. Os cenários unitários de sucesso, erro e limites das regras são obrigatórios mesmo quando a integração exercita as mesmas linhas.
 - Testes de integração devem complementar os unitários na validação de persistência e contratos REST. A conclusão de uma tarefa depende do atendimento aos critérios de aceite e das validações aplicáveis.
