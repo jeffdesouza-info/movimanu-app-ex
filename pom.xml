@@ -29,7 +29,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <spring-cloud.version>2025.1.3</spring-cloud.version>
-        <spring-boot.repackage.skip>true</spring-boot.repackage.skip>
+        <spring-boot.repackage.skip>false</spring-boot.repackage.skip>
         <jacoco.minimum.coverage>1.00</jacoco.minimum.coverage>
     </properties>
 
