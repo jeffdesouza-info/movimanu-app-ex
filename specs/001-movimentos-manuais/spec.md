@@ -29,11 +29,12 @@ Referência do exercício: `document/references/enunciado-movimentos-manuais.md`
 
 ### 3.1. Estado da tela
 
-- **RF-INC-01:** iniciar com os campos de texto vazios, as combo-boxes em **-- Selecione --** e os campos de entrada desabilitados. Ao clicar em **Novo**, habilitar Mês, Ano, Produto, Cosif, Valor e Descrição para inclusão.
+- **RF-INC-01:** iniciar com os campos de texto vazios, as combo-boxes em **-- Selecione --** e os campos de entrada desabilitados. Ao clicar em **Novo**, habilitar Mês, Ano, Produto, Cosif, Valor e Descrição para inclusão. A habilitação de Cosif também deve respeitar RF-INC-10.
 - **RF-INC-02:** o botão **Incluir** deve permitir salvar somente durante a inclusão e com os dados válidos.
 - **RF-INC-03:** após persistência bem-sucedida, atualizar a consulta, esvaziar os campos de texto, retornar as combo-boxes a **-- Selecione --** e desabilitar todos os campos de entrada.
 - **RF-INC-04:** em falha de validação ou persistência, informar o problema e preservar os valores e as seleções para correção, sem apresentar a inclusão como concluída. Em falha confirmada após o envio, retornar ao modo de inclusão e restaurar a edição e as ações, mantendo **Incluir** condicionado aos dados válidos.
 - **RF-INC-09:** ao iniciar o envio e enquanto o POST estiver pendente, desabilitar Mês, Ano, Produto, Cosif, Valor e Descrição e os botões **Novo**, **Limpar** e **Incluir**, preservando os valores e as seleções e impedindo novo envio.
+- **RF-INC-10:** durante o carregamento ou após falha na consulta de COSIFs, manter Cosif em **-- Selecione --**, sem opções anteriores e desabilitado; **Incluir** permanece indisponível. Indicar o carregamento e, em falha, substituí-lo por mensagem e ação **Tentar novamente**, que consulta apenas os COSIFs do produto atual sem alterar os demais dados. Em sucesso, disponibilizar as opções sem seleção automática e habilitar Cosif quando o modo da tela permitir.
 
 ### 3.2. Campos
 
@@ -72,3 +73,4 @@ Todos os campos abaixo são obrigatórios.
 - **CA-07 — Limites e sinal:** aceitar os meses 1 e 12 e rejeitar 0 e 13; aceitar valores como `150,00` e `-150,00` e rejeitar `0,00`.
 - **CA-08 — Limpeza:** com campos preenchidos e opções selecionadas, **Limpar** deve esvaziar os textos e retornar ambas as combo-boxes a **-- Selecione --**, mantendo os campos habilitados durante a inclusão.
 - **CA-09 — Bloqueio durante o envio:** com o POST pendente, impedir a alteração dos seis campos e o acionamento de **Novo**, **Limpar** e **Incluir**, sem disparar outro POST. Em falha confirmada, retornar à inclusão com valores e seleções preservados e restaurar a edição e as ações, mantendo **Incluir** condicionado aos dados válidos. Em sucesso, cumprir CA-05.
+- **CA-10 — Consulta de COSIFs:** ao selecionar um produto, manter Cosif sem seleção e indisponível durante a consulta. Em falha, exibir erro e **Tentar novamente**, preservando os demais valores e seleções. Repetir somente o GET de COSIFs do produto atual; em sucesso, permitir selecionar uma opção sem seleção automática. Ignorar respostas de produto anterior e impedir inclusão enquanto Cosif não tiver seleção válida.

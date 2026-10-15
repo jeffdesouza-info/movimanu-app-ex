@@ -43,8 +43,10 @@ Prefixo: `/api/v1`. A API usa DTOs próprios, sem expor entidades JPA.
 
 ## 5. Interface e comunicação
 
-- Modelar explicitamente os estados de consulta, inclusão e envio. Derivar deles a habilitação do formulário e das ações, conforme RF-INC-01 a RF-INC-04, RF-INC-08 e RF-INC-09.
-- Representar `-- Selecione --` por valor nulo. Na troca de produto, limpar a seleção/opções de COSIF e usar `switchMap` para impedir que uma resposta antiga substitua a seleção atual.
+- Modelar explicitamente os estados de consulta, inclusão e envio. Derivar deles a habilitação do formulário e das ações, conforme RF-INC-01 a RF-INC-04 e RF-INC-08 a RF-INC-10. Combinar o modo da tela com o estado da consulta de COSIFs ao habilitar campos e ações.
+- Representar `-- Selecione --` por valor nulo. Na troca de produto ou nova tentativa, limpar a seleção/opções de Cosif, indicar carregamento e desabilitar a combo-box. Usar `switchMap` para ignorar respostas ou erros de consultas anteriores; ao limpar o formulário ou remover o produto, cancelar a consulta anterior e limpar as opções e o erro de Cosif.
+- Em falha do GET de COSIFs, encerrar a indicação de carregamento, manter Cosif sem seleção e desabilitado e apresentar mensagem com a ação Tentar novamente. Essa ação consulta somente os COSIFs do produto atual, sem POST nem reset dos demais dados; fica disponível apenas no modo de inclusão, com produto selecionado e sem consulta de COSIFs pendente.
+- Tratar as falhas dentro do fluxo da consulta de COSIFs, mantendo operacionais as próximas trocas de produto e novas tentativas. Em sucesso, disponibilizar opções sem seleção automática e habilitar Cosif somente quando o modo da tela permitir. Impedir inclusão durante o carregamento, após erro ou sem seleção válida, mesmo com o controle Cosif desabilitado.
 - Manter o valor como texto no formulário; converter vírgula/ponto e formatar em pt-BR sem passar por `Number` ou `parseFloat`. Preservar também o lançamento como texto.
 - Ao iniciar o POST, entrar no estado de envio e desabilitar todos os campos e os botões Novo, Limpar e Incluir, preservando valores e seleções. Manter o bloqueio enquanto o POST estiver pendente e impedir novos envios.
 - Em falha confirmada da inclusão, retornar ao estado de inclusão e restaurar a edição e as ações sem limpar valores ou seleções. Recalcular a disponibilidade de Incluir pela validade do formulário.
@@ -58,7 +60,7 @@ Prefixo: `/api/v1`. A API usa DTOs próprios, sem expor entidades JPA.
 
 ## 7. Validação e conclusão
 
-- Cobrir CA-01 a CA-09 com testes unitários de domínio/aplicação e do frontend; incluir limites, precisão decimal, estados do formulário, bloqueio dos campos e ações durante o POST, restauração da edição com valores e seleções preservados em falha confirmada e respostas COSIF fora de ordem.
+- Cobrir CA-01 a CA-10 com testes unitários de domínio/aplicação e do frontend; incluir limites, precisão decimal, estados do formulário, bloqueio dos campos e ações durante o POST, restauração da edição com valores e seleções preservados em falha confirmada, carregamento e falha de COSIFs, nova tentativa para o produto atual sem alterar os demais dados e respostas fora de ordem.
 - Adicionar testes de integração REST/JPA/Flyway, incluindo concorrência no mesmo período vazio e preenchido, com produtos distintos; verificar sequência, rollback, paginação e equivalência temporal.
 - Configurar Maven Failsafe para executar `*IT` em `verify`, integrando a cobertura ao JaCoCo e preservando o limite de 100% de linhas e as exclusões existentes.
 - Na implementação, executar `./mvnw clean verify`, testes Angular sem modo de observação e build de produção. Validar a aplicação iniciada com H2 persistente e registrar no README os comandos confirmados e as versões do frontend.
