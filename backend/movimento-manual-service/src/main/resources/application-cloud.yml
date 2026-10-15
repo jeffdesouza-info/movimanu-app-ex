@@ -1,0 +1,12 @@
+spring:
+  config:
+    activate:
+      on-profile: cloud
+    import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+  h2:
+    console:
+      enabled: false

@@ -1,0 +1,29 @@
+# Maven
+target/
+**/target/
+
+# Runtime data
+data/
+*.mv.db
+*.trace.db
+
+# Angular / Node (para a futura implementação)
+node_modules/
+dist/
+.angular/
+
+# IDEs e sistema operacional
+.idea/
+.vscode/
+*.iml
+.project
+.classpath
+.settings/
+.DS_Store
+Thumbs.db
+
+# Logs e variáveis locais
+*.log
+.env
+.env.*
+!.env.example
