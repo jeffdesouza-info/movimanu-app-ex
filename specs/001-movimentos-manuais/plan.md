@@ -43,10 +43,12 @@ Prefixo: `/api/v1`. A API usa DTOs próprios, sem expor entidades JPA.
 
 ## 5. Interface e comunicação
 
-- Modelar explicitamente os estados de consulta, inclusão e envio. Derivar deles a habilitação do formulário e das ações, conforme RF-INC-01 a RF-INC-04 e RF-INC-08.
+- Modelar explicitamente os estados de consulta, inclusão e envio. Derivar deles a habilitação do formulário e das ações, conforme RF-INC-01 a RF-INC-04, RF-INC-08 e RF-INC-09.
 - Representar `-- Selecione --` por valor nulo. Na troca de produto, limpar a seleção/opções de COSIF e usar `switchMap` para impedir que uma resposta antiga substitua a seleção atual.
 - Manter o valor como texto no formulário; converter vírgula/ponto e formatar em pt-BR sem passar por `Number` ou `parseFloat`. Preservar também o lançamento como texto.
-- Bloquear novo envio enquanto o POST estiver pendente. Após confirmação, aplicar o reset previsto e reconsultar a primeira página. Uma falha nessa reconsulta deve permitir repetir somente o GET, sem reenviar a inclusão já concluída.
+- Ao iniciar o POST, entrar no estado de envio e desabilitar todos os campos e os botões Novo, Limpar e Incluir, preservando valores e seleções. Manter o bloqueio enquanto o POST estiver pendente e impedir novos envios.
+- Em falha confirmada da inclusão, retornar ao estado de inclusão e restaurar a edição e as ações sem limpar valores ou seleções. Recalcular a disponibilidade de Incluir pela validade do formulário.
+- Após confirmação de sucesso, aplicar o reset previsto e reconsultar a primeira página. Uma falha nessa reconsulta deve permitir repetir somente o GET, sem reenviar a inclusão já concluída.
 - Configurar a URL da API por ambiente e proxy no desenvolvimento local. Reproduzir o layout de referência e apresentar carregamento, erros e ausência de registros.
 
 ## 6. Ambientes e Spring Cloud
@@ -56,7 +58,7 @@ Prefixo: `/api/v1`. A API usa DTOs próprios, sem expor entidades JPA.
 
 ## 7. Validação e conclusão
 
-- Cobrir CA-01 a CA-08 com testes unitários de domínio/aplicação e do frontend; incluir limites, precisão decimal, estados do formulário e respostas COSIF fora de ordem.
+- Cobrir CA-01 a CA-09 com testes unitários de domínio/aplicação e do frontend; incluir limites, precisão decimal, estados do formulário, bloqueio dos campos e ações durante o POST, restauração da edição com valores e seleções preservados em falha confirmada e respostas COSIF fora de ordem.
 - Adicionar testes de integração REST/JPA/Flyway, incluindo concorrência no mesmo período vazio e preenchido, com produtos distintos; verificar sequência, rollback, paginação e equivalência temporal.
 - Configurar Maven Failsafe para executar `*IT` em `verify`, integrando a cobertura ao JaCoCo e preservando o limite de 100% de linhas e as exclusões existentes.
 - Na implementação, executar `./mvnw clean verify`, testes Angular sem modo de observação e build de produção. Validar a aplicação iniciada com H2 persistente e registrar no README os comandos confirmados e as versões do frontend.

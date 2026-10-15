@@ -32,7 +32,8 @@ Referência do exercício: `document/references/enunciado-movimentos-manuais.md`
 - **RF-INC-01:** iniciar com os campos de texto vazios, as combo-boxes em **-- Selecione --** e os campos de entrada desabilitados. Ao clicar em **Novo**, habilitar Mês, Ano, Produto, Cosif, Valor e Descrição para inclusão.
 - **RF-INC-02:** o botão **Incluir** deve permitir salvar somente durante a inclusão e com os dados válidos.
 - **RF-INC-03:** após persistência bem-sucedida, atualizar a consulta, esvaziar os campos de texto, retornar as combo-boxes a **-- Selecione --** e desabilitar todos os campos de entrada.
-- **RF-INC-04:** em falha de validação ou persistência, informar o problema e manter os dados disponíveis para correção, sem apresentar a inclusão como concluída.
+- **RF-INC-04:** em falha de validação ou persistência, informar o problema e preservar os valores e as seleções para correção, sem apresentar a inclusão como concluída. Em falha confirmada após o envio, retornar ao modo de inclusão e restaurar a edição e as ações, mantendo **Incluir** condicionado aos dados válidos.
+- **RF-INC-09:** ao iniciar o envio e enquanto o POST estiver pendente, desabilitar Mês, Ano, Produto, Cosif, Valor e Descrição e os botões **Novo**, **Limpar** e **Incluir**, preservando os valores e as seleções e impedindo novo envio.
 
 ### 3.2. Campos
 
@@ -70,3 +71,4 @@ Todos os campos abaixo são obrigatórios.
 - **CA-06 — Validação:** rejeitar campos obrigatórios ausentes, mês fora de 1 a 12, mês/ano não inteiros, ano não positivo, valor zero, limites excedidos e pares produto/COSIF inválidos, mantendo o formulário disponível para correção.
 - **CA-07 — Limites e sinal:** aceitar os meses 1 e 12 e rejeitar 0 e 13; aceitar valores como `150,00` e `-150,00` e rejeitar `0,00`.
 - **CA-08 — Limpeza:** com campos preenchidos e opções selecionadas, **Limpar** deve esvaziar os textos e retornar ambas as combo-boxes a **-- Selecione --**, mantendo os campos habilitados durante a inclusão.
+- **CA-09 — Bloqueio durante o envio:** com o POST pendente, impedir a alteração dos seis campos e o acionamento de **Novo**, **Limpar** e **Incluir**, sem disparar outro POST. Em falha confirmada, retornar à inclusão com valores e seleções preservados e restaurar a edição e as ações, mantendo **Incluir** condicionado aos dados válidos. Em sucesso, cumprir CA-05.
