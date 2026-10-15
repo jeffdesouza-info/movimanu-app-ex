@@ -47,12 +47,14 @@ Todos os campos abaixo são obrigatórios.
 | Produto | Combo-box de `PRODUTO`: exibir `DES_PRODUTO` e identificar por `COD_PRODUTO`. |
 | Cosif | Combo-box de `PRODUTO_COSIF`: listar os registros do produto selecionado, identificar por `COD_COSIF` nesse produto e exibir `COD_COSIF - (COD_CLASSIFICACAO)`. |
 | Descrição do Movimento | Texto digitado, não vazio, com até 50 caracteres; persistir em `DES_DESCRICAO`. |
-| Valor | Número decimal positivo ou negativo, diferente de zero, compatível com `NUMERIC(18,2)`: até 16 dígitos inteiros e duas casas decimais; persistir em `VAL_VALOR` preservando a precisão. |
+| Valor | Número decimal positivo ou negativo, diferente de zero, compatível com `NUMERIC(18,2)`: até 16 dígitos inteiros e duas casas decimais, conforme RF-INC-11; persistir em `VAL_VALOR` preservando a precisão. |
 
 - **RF-INC-05:** ao trocar o produto, retornar Cosif a **-- Selecione --** e atualizar suas opções. Aceitar somente um par produto/COSIF existente em `PRODUTO_COSIF`.
 - **RF-INC-06:** validar os dados também na API e rejeitar entradas incompatíveis com estas regras e com os limites do esquema.
 - **RF-INC-07:** cada combo-box deve oferecer **-- Selecione --**, representando ausência de seleção e sem corresponder a um código válido. Essa opção não satisfaz a obrigatoriedade do campo.
 - **RF-INC-08:** ao clicar em **Limpar**, esvaziar os campos de texto e retornar ambas as combo-boxes a **-- Selecione --**, preservando o modo da tela e o estado de habilitação dos campos.
+
+- **RF-INC-11:** no campo Valor, aceitar notação decimal simples: sinal negativo opcional no início, de um a 16 dígitos inteiros e, opcionalmente, um único separador decimal (vírgula ou ponto) seguido de uma ou duas casas. Rejeitar separadores de milhar, formatos mistos, notação científica, espaços e símbolos monetários. Validar o texto completo antes de normalizar; preservar sinal e precisão e rejeitar zero ou excesso de casas, sem arredondar ou remover caracteres para tornar a entrada válida. Converter somente a entrada válida para o formato textual com ponto do contrato da API.
 
 ### 3.3. Dados automáticos e integridade
 
@@ -88,3 +90,4 @@ Todos os campos abaixo são obrigatórios.
 - **CA-09 — Bloqueio durante o envio:** com o POST pendente, impedir a alteração dos seis campos e o acionamento de **Novo**, **Limpar** e **Incluir**, sem disparar outro POST. Em falha confirmada, retornar à inclusão com valores e seleções preservados e restaurar a edição e as ações, mantendo **Incluir** condicionado aos dados válidos. Em sucesso, cumprir CA-05.
 - **CA-10 — Consulta de COSIFs:** ao selecionar um produto, manter Cosif sem seleção e indisponível durante a consulta. Em falha, exibir erro e **Tentar novamente**, preservando os demais valores e seleções. Repetir somente o GET de COSIFs do produto atual; em sucesso, permitir selecionar uma opção sem seleção automática. Ignorar respostas de produto anterior e impedir inclusão enquanto Cosif não tiver seleção válida.
 - **CA-11 — Contrato REST:** validar os casos de RF-API-01 e os nomes e tipos dos campos dos DTOs, da paginação e dos erros definidos no plano. Com sete movimentos, `page=2` retorna `200`, `content=[]`, `page=2`, `size=6`, `totalElements=7` e `totalPages=2`; `page=-1` retorna `400`.
+- **CA-12 — Formato monetário:** aceitar no formulário `150`, `150,5`, `150.50`, `-150,00` e `1234,56`; `1,23` e `1.23` representam o mesmo valor. Rejeitar `1.234`, `1,234`, `1.234,56`, `1,234.56`, `1 234,56`, `1e3`, `1E3` e `150,001`. Aceitar o limite `9999999999999999,99`, rejeitar `10000000000000000,00` e qualquer representação de zero, incluindo `-0,00`. Enviar `-150,00` como `"-150.00"` e preservar o valor do limite sem perda de precisão. Na API, formatos incompatíveis com o contrato, inclusive vírgula decimal, retornam `400` associado a `valor`.
