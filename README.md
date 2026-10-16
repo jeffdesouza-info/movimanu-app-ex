@@ -2,7 +2,7 @@
 
 Base do sistema de Movimentos Manuais, preparada para uma API REST em Java 21 com Spring Boot, Spring Cloud, DDD e persistência H2, além de um frontend Angular.
 
-O backend já possui inicialização Spring Boot, JAR executável, perfis local e de testes, modelos de domínio e contratos de consulta e inclusão, com execução separada de testes unitários e de integração. O workspace Angular está inicializado com componentes standalone, Reactive Forms, HttpClient, ambientes, proxy local e testes iniciais. As funcionalidades de consulta e inclusão de movimentos permanecem pendentes.
+O backend já possui inicialização Spring Boot, JAR executável, perfis local e de testes, modelos de domínio, contratos de consulta e inclusão e a base de persistência JPA, com execução separada de testes unitários e de integração. O workspace Angular está inicializado com componentes standalone, Reactive Forms, HttpClient, ambientes, proxy local e testes iniciais. As funcionalidades de consulta e inclusão de movimentos permanecem pendentes.
 
 ## Estrutura
 
@@ -20,6 +20,7 @@ O backend já possui inicialização Spring Boot, JAR executável, perfis local 
 |           |   |   `-- interfaces/
 |           |   `-- resources/
 |           |       |-- db/migration/
+|           |       |-- db/local/demo-data.sql
 |           |       |-- application.yml
 |           |       |-- application-local.yml
 |           |       `-- application-cloud.yml
@@ -55,7 +56,13 @@ Os modelos em `domain/model` usam campos diretos: `String` para códigos e descr
 
 As validações ficam nos construtores dos modelos, com apoio do auxiliar interno `ModelValidation`. Os códigos preservam zeros à esquerda e respeitam comprimentos máximos de quatro e onze caracteres. O valor valida a escala original e os limites antes de ser normalizado para duas casas, sem arredondamento.
 
-As quatro portas em `application/port` definem consulta de produtos, COSIFs, movimentos e inclusão. A consulta de movimentos recebe a página como `int` e retorna `MovementPage<ManualMovementProjection>`; a projeção em `application/projection` inclui a descrição do produto. Domínio e contratos permanecem independentes de Spring, JPA e HTTP. Os casos de uso, adaptadores de persistência e endpoints ainda serão implementados.
+As quatro portas em `application/port` definem consulta de produtos, COSIFs, movimentos e inclusão. A consulta de movimentos recebe a página como `int` e retorna `MovementPage<ManualMovementProjection>`; a projeção em `application/projection` inclui a descrição do produto. Domínio e contratos permanecem independentes de Spring, JPA e HTTP. Os casos de uso, adaptadores das portas e endpoints ainda serão implementados.
+
+## Persistência JPA
+
+A infraestrutura em `infrastructure/persistence` contém `ProductEntity`, `ProductCosifEntity` e `ManualMovementEntity`, os identificadores compostos `ProductCosifEntityId` e `ManualMovementEntityId`, três mapeadores e `SmallDateTimeConverter`. As anotações JPA ficam na infraestrutura; os modelos de domínio mantêm campos diretos e independência de frameworks.
+
+A migração `V2__unique_period_launch_number.sql` adiciona `UK_MOVIMENTO_MANUAL_PERIODO_LANCAMENTO` sobre `(DAT_ANO, DAT_MES, NUM_LANCAMENTO)`, complementando a chave primária e impedindo a repetição por período inclusive entre produtos diferentes. A migração V1 foi preservada. A geração da sequência, as transações e as novas tentativas da inclusão concorrente permanecem pendentes.
 
 ## Pré-requisitos
 
@@ -88,14 +95,14 @@ Em Linux/macOS, use `./mvnw test`, `./mvnw clean verify` e barras `/` no caminho
 
 ## Validação do backend
 
-Na validação reportada da conclusão do domínio e das portas, `.\mvnw.cmd test` passou e `.\mvnw.cmd clean verify` concluiu com sucesso. Os resultados abaixo foram informados pelo Codex; testes e build não foram executados novamente nesta atualização documental.
+Na validação reportada da implementação da persistência, `.\mvnw.cmd test` passou e `.\mvnw.cmd clean verify` concluiu com sucesso. Os resultados abaixo são da execução final de `clean verify`, informada pelo Codex; testes e build não foram executados novamente nesta atualização documental.
 
 | Grupo | Executados | Falhas | Erros | Ignorados |
 | --- | --- | --- | --- | --- |
-| Unitários — Surefire (`*Test`) | 22 | 0 | 0 | 0 |
-| Integração — Failsafe (`*IT`) | 1 | 0 | 0 | 0 |
+| Unitários — Surefire (`*Test`) | 32 | 0 | 0 | 0 |
+| Integração — Failsafe (`*IT`) | 4 | 0 | 0 | 0 |
 
-Os testes unitários verificam modelos, validações, projeção e paginação, além da declaração do ponto de entrada Spring Boot. O teste de integração confirma a inicialização com H2 em memória e a existência da tabela `PRODUTO` após a migração.
+Os testes unitários verificam modelos, validações, projeção, paginação, identificadores JPA, mapeadores e conversor temporal, além da declaração do ponto de entrada Spring Boot. Os testes de integração verificam o esquema migrado, os relacionamentos persistidos, a conversão temporal, a restrição única entre produtos diferentes e a carga demonstrativa no perfil local. O perfil de teste mantém o banco em memória sem a carga demonstrativa.
 
 Na preparação inicial do backend, o JAR executável iniciou no perfil `local`, com H2 persistente e aplicação da migração `V1__create_manual_movement_schema.sql`.
 
@@ -112,7 +119,7 @@ Os caminhos abaixo são relativos a `backend/movimento-manual-service`:
 | Relatórios de integração HTML e XML | `target/site/jacoco-integration/index.html` e `target/site/jacoco-integration/jacoco.xml` |
 | Relatórios consolidados HTML e XML | `target/site/jacoco/index.html` e `target/site/jacoco/jacoco.xml` |
 
-Na execução reportada, o JaCoCo consolidado registrou **90 de 90 linhas elegíveis cobertas (100%)**, com aprovação da verificação configurada e preservação das exclusões existentes de configuração e inicialização. A cobertura abrange o código implementado até esta etapa. Persistência JPA, casos de uso, contratos REST e comportamentos funcionais da interface permanecem nas próximas tarefas.
+Na execução reportada, o JaCoCo consolidado registrou **237 de 237 linhas elegíveis cobertas (100%)**, com aprovação da verificação configurada e preservação das exclusões existentes de configuração e inicialização. A cobertura abrange o código implementado até esta etapa. Casos de uso, adaptadores das portas, contratos REST e comportamentos funcionais da interface permanecem nas próximas tarefas.
 
 Na validação inicial do backend, o Flyway avisou que a versão resolvida do H2 era mais nova que a versão com a qual havia sido verificado. A migração e os testes passaram, mantendo-se as versões gerenciadas pelo projeto.
 
@@ -185,7 +192,9 @@ A escolha do provedor de cloud, OCI ou AWS, permanece pendente.
 
 ## Banco de dados local
 
-O perfil padrão `local` usa um banco H2 persistente em `./data/movimanu`, relativo ao diretório de trabalho. O esquema é criado pelo Flyway, integrado pelo starter do Spring Boot, a partir de `V1__create_manual_movement_schema.sql`; o Hibernate está configurado somente para validá-lo.
+O perfil padrão `local` usa um banco H2 persistente em `./data/movimanu`, relativo ao diretório de trabalho. A URL pode ser sobrescrita por `H2_URL`. O Flyway cria o esquema pela migração `V1__create_manual_movement_schema.sql` e aplica a restrição única pela `V2__unique_period_launch_number.sql`; o Hibernate está configurado somente para validar o esquema.
+
+Somente o perfil `local` habilita `spring.sql.init.mode=always` com `classpath:db/local/demo-data.sql`. O script insere os produtos demonstrativos `0001` e `0002` e três vínculos COSIF apenas quando ausentes, usando `WHERE NOT EXISTS`. Os testes usam fixtures próprias em `src/test/resources/fixtures/persistence-fixtures.sql` do backend; o teste da carga local usa outro banco em memória para evitar dados no arquivo local.
 
 Com o backend iniciado no perfil `local`, o console H2 está configurado em `http://localhost:8080/h2-console`, com os seguintes dados padrão:
 
@@ -201,10 +210,21 @@ O perfil `cloud` espera `DB_URL`, `DB_USER` e `DB_PASSWORD`, sem vincular o proj
 
 - `PRODUTO`: chave primária `COD_PRODUTO`.
 - `PRODUTO_COSIF`: chave primária composta por `COD_PRODUTO` e `COD_COSIF`; `COD_PRODUTO` referencia `PRODUTO`.
-- `MOVIMENTO_MANUAL`: chave primária composta por mês, ano, número do lançamento, produto e COSIF; o par produto/COSIF referencia `PRODUTO_COSIF`.
+- `MOVIMENTO_MANUAL`: chave primária composta por mês, ano, número do lançamento, produto e COSIF; o par produto/COSIF referencia `PRODUTO_COSIF`. A V2 acrescenta unicidade por ano, mês e lançamento.
 
 No H2, `SMALLDATETIME` é representado por um domínio SQL sobre `TIMESTAMP(0)`, definido em `backend/movimento-manual-service/src/main/resources/db/migration/V1__create_manual_movement_schema.sql`. A precisão `(0)` indica ausência de casas fracionárias nos segundos; essa representação ainda admite segundos diferentes de `00`.
 
-A equivalência comportamental de `DAT_MOVIMENTO` depende dos complementos previstos no `plan.md` da especificação aplicável: arredondamento ao minuto no adaptador, segundos em `00`, respeito à faixa de datas de `1900-01-01` a `2079-06-06` e testes de arredondamento e limites, incluindo virada de dia. Esses complementos permanecem pendentes de implementação e validação; sua confirmação e as evidências devem ser registradas no README ao concluir a validação final da aplicação.
+O comportamento temporal é complementado na infraestrutura por `SmallDateTimeConverter`, aplicado ao atributo `movementAt` da entidade. O conversor trata os instantes em UTC, arredonda ao minuto com segundos em `00` e verifica a faixa de `1900-01-01` a `2079-06-06` antes e depois do arredondamento. O mapeador de movimentos também usa essa normalização ao criar a entidade.
+
+A implementação arredonda para baixo quando os segundos são inferiores a `29.999` e para cima a partir de `29.999`, inclusive em viradas de dia ou ano. O último minuto representável é `2079-06-06T23:59:00Z`; entradas cujo arredondamento ultrapassaria a faixa são rejeitadas.
+
+As evidências de teste abaixo usam caminhos relativos a `backend/movimento-manual-service`. A execução foi reportada como aprovada no `clean verify` da persistência.
+
+| Evidência | Cenários verificados |
+| --- | --- |
+| `src/test/java/com/antlia/movimanu/unit/infrastructure/persistence/converter/SmallDateTimeConverterTest.java` | Valores imediatamente abaixo e no limiar de `29.999` segundos, virada de ano, limites mínimo/máximo, rejeição fora da faixa e após arredondamento, conversão nos dois sentidos em UTC e nulos. |
+| `src/test/java/com/antlia/movimanu/integration/JpaPersistenceIT.java` | Gravação e releitura do horário arredondado, relacionamentos compostos, valor decimal e rejeição de lançamento repetido no período entre produtos diferentes. |
+
+A equivalência temporal descrita corresponde ao comportamento implementado no adaptador e aos cenários de teste acima; o domínio SQL sobre `TIMESTAMP(0)` continua sendo apenas a representação do tipo no H2. A validação final da aplicação deverá reconfirmar esses testes e a execução com banco persistente.
 
 Referências técnicas: [TIMESTAMP no H2](https://h2database.com/html/datatypes.html) e [SMALLDATETIME no SQL Server](https://learn.microsoft.com/en-us/sql/t-sql/data-types/smalldatetime-transact-sql).

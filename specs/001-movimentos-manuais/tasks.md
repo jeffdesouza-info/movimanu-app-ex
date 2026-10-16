@@ -22,7 +22,7 @@ Os vínculos RF, RN e CA remetem a `specs/001-movimentos-manuais/spec.md`; os in
 - [x] **T003 — Implementar domínio e portas.** Criar modelos com campos diretos, identificadores compostos sem aninhamento e contratos de consulta e inclusão, incluindo a projeção de movimentos com descrição do produto. Aplicar as validações de negócio previstas na especificação nos modelos, com compartilhamento interno das regras repetidas, preservando precisão decimal e independência de Spring, JPA e HTTP, conforme a seção 2.1 do plano.
 
   **Vínculos:** `RF-INC-05`, `RF-INC-06`, `RF-INC-11`, `RF-INC-12`; `CA-03`, `CA-06`, `CA-07`, `CA-12`, `CA-13`.
-- [ ] **T004 — Implementar persistência.** Criar entidades JPA, chaves compostas e mapeadores. Adicionar a restrição única por período/lançamento em nova migração, preservando a existente. Implementar a equivalência temporal de `SMALLDATETIME`; preparar dados demonstrativos exclusivos do ambiente local e fixtures isoladas para testes.
+- [x] **T004 — Implementar persistência.** Criar entidades JPA, chaves compostas e mapeadores. Adicionar a restrição única por período/lançamento em nova migração, preservando a existente. Implementar a equivalência temporal de `SMALLDATETIME`; preparar dados demonstrativos exclusivos do ambiente local e fixtures isoladas para testes.
 
   **Vínculos:** `RF-CON-02`; `RF-INC-05`, `RF-INC-06`, `RF-INC-11`, `RF-INC-12`; `RN-02`, `RN-03`, `RN-05`; `CA-04`, `CA-05`, `CA-06`, `CA-12`, `CA-13`.
 - [ ] **T005 — Implementar consultas.** Criar casos de uso e adaptadores para produtos, COSIFs por produto e movimentos. Usar projeção com descrição do produto, paginação de seis registros e ordenação determinística conforme o plano, sem tipos Spring nas portas.
