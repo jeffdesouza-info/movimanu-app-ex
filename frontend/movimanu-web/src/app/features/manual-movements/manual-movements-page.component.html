@@ -1,0 +1,182 @@
+<div class="page-shell">
+  <header class="page-heading">
+    <div class="heading-title">
+      <div>
+        <p class="eyebrow">Operações financeiras</p>
+        <h1>Movimentos Manuais</h1>
+      </div>
+    </div>
+    <p class="page-subtitle">Consulta de lançamentos registrados por período.</p>
+  </header>
+
+  <main>
+    <section class="panel form-panel" aria-labelledby="movement-form-title">
+      <div class="panel-heading">
+        <div>
+          <p class="section-kicker">Lançamento</p>
+          <h2 id="movement-form-title">Dados do movimento</h2>
+        </div>
+      </div>
+
+      <div class="form-grid" aria-label="Campos e ações do movimento">
+        <label class="field">
+          <span>Mês</span>
+          <input type="text" inputmode="numeric" disabled />
+        </label>
+        <label class="field">
+          <span>Ano</span>
+          <input type="text" inputmode="numeric" disabled />
+        </label>
+        <label class="field">
+          <span>Produto</span>
+          <select disabled>
+            <option>-- Selecione --</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Cosif</span>
+          <select disabled>
+            <option>-- Selecione --</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Valor</span>
+          <input type="text" disabled />
+        </label>
+        <label class="field description-field">
+          <span>Descrição</span>
+          <textarea rows="3" disabled></textarea>
+        </label>
+
+        <div class="form-actions" aria-label="Ações do movimento">
+          <button class="button button-secondary" type="button" disabled>Limpar</button>
+          <button class="button button-secondary" type="button" disabled>Novo</button>
+          <button class="button button-primary" type="button" disabled>Incluir</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel movements-panel" aria-labelledby="movement-list-title">
+      <div class="panel-heading list-heading">
+        <div>
+          <p class="section-kicker">Consulta</p>
+          <h2 id="movement-list-title">Movimentos registrados</h2>
+        </div>
+      </div>
+
+      <div class="table-region" [attr.aria-busy]="queryState() === 'loading'">
+        <div class="table-scroll">
+          <table>
+            <caption class="visually-hidden">Movimentos manuais registrados</caption>
+            <thead>
+              <tr>
+                <th scope="col">Mês</th>
+                <th scope="col">Ano</th>
+                <th scope="col">Código do Produto</th>
+                <th scope="col">Descrição do Produto</th>
+                <th scope="col">Nr Lançamento</th>
+                <th scope="col">Descrição do Movimento</th>
+                <th class="value-heading" scope="col">Valor</th>
+              </tr>
+            </thead>
+            <tbody>
+              @if (queryState() === 'loading') {
+                <tr>
+                  <td class="state-cell" colspan="7" role="status">
+                    <span class="spinner" aria-hidden="true"></span>
+                    <span>Carregando movimentos...</span>
+                  </td>
+                </tr>
+              } @else if (queryState() === 'error') {
+                <tr>
+                  <td class="state-cell error-cell" colspan="7" role="alert">
+                    <span>{{ errorMessage() }}</span>
+                    <button class="retry-button" type="button" (click)="retry()">
+                      Tentar novamente
+                    </button>
+                  </td>
+                </tr>
+              } @else if (pageData(); as page) {
+                @if (page.content.length > 0) {
+                  @for (movement of page.content; track trackMovement(movement)) {
+                    <tr class="movement-row">
+                      <td>{{ movement.mes }}</td>
+                      <td>{{ movement.ano }}</td>
+                      <td class="code-cell">{{ movement.codigoProduto }}</td>
+                      <td>{{ movement.descricaoProduto ?? '—' }}</td>
+                      <td class="code-cell">{{ movement.numeroLancamento }}</td>
+                      <td class="movement-description">{{ movement.descricao }}</td>
+                      <td class="value-cell">{{ formatValue(movement.valor) }}</td>
+                    </tr>
+                  }
+                } @else if (page.totalElements === 0) {
+                  <tr>
+                    <td class="state-cell empty-cell" colspan="7" role="status">
+                      <span>Nenhum movimento encontrado.</span>
+                    </td>
+                  </tr>
+                } @else {
+                  <tr>
+                    <td class="state-cell empty-cell" colspan="7" role="status">
+                      Não há movimentos nesta página.
+                    </td>
+                  </tr>
+                }
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      @if (queryState() === 'loaded' && pageData(); as page) {
+        <footer class="table-footer">
+          <p class="results-summary">
+            @if (page.content.length > 0 && page.totalElements > 0) {
+              Exibindo {{ firstItem() }}-{{ lastItem() }} de {{ page.totalElements }} movimentos
+              <span>({{ page.size }} por página)</span>
+            } @else if (page.totalElements > 0) {
+              Nenhum movimento nesta página. Total: {{ page.totalElements }} movimentos.
+            } @else {
+              0 movimentos encontrados
+            }
+          </p>
+
+          @if (showPagination()) {
+            <nav class="pagination" aria-label="Paginação de movimentos">
+              <button
+                class="page-button"
+                type="button"
+                aria-label="Primeira página"
+                [disabled]="!canGoToPreviousPage()"
+                (click)="goToFirstPage()"
+              >
+                Primeira
+              </button>
+              <button
+                class="page-button"
+                type="button"
+                aria-label="Página anterior"
+                [disabled]="!canGoToPreviousPage()"
+                (click)="goToPreviousPage()"
+              >
+                Anterior
+              </button>
+              <span class="page-indicator" aria-live="polite">
+                Página {{ displayedPageNumber() }} de {{ page.totalPages }}
+              </span>
+              <button
+                class="page-button"
+                type="button"
+                aria-label="Próxima página"
+                [disabled]="!canGoToNextPage()"
+                (click)="goToNextPage()"
+              >
+                Próxima
+              </button>
+            </nav>
+          }
+        </footer>
+      }
+    </section>
+  </main>
+</div>

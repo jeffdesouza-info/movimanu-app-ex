@@ -1,13 +1,10 @@
-import { Component, signal } from '@angular/core';
-import { ReactiveFormsModule } from '@angular/forms';
-import { RouterOutlet } from '@angular/router';
+import { Component } from '@angular/core';
+import { ManualMovementsPageComponent } from './features/manual-movements/manual-movements-page.component';
 
 @Component({
-  imports: [ReactiveFormsModule, RouterOutlet],
+  imports: [ManualMovementsPageComponent],
   selector: 'app-root',
   styleUrl: './app.css',
   templateUrl: './app.html',
 })
-export class App {
-  protected readonly title = signal('movimanu-web');
-}
+export class App {}
