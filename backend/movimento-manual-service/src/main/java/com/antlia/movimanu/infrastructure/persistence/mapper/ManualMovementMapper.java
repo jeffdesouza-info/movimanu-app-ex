@@ -2,6 +2,7 @@ package com.antlia.movimanu.infrastructure.persistence.mapper;
 
 import java.util.Objects;
 
+import com.antlia.movimanu.application.projection.ManualMovementProjection;
 import com.antlia.movimanu.domain.model.ManualMovement;
 import com.antlia.movimanu.domain.model.ManualMovementId;
 import com.antlia.movimanu.infrastructure.persistence.converter.SmallDateTimeConverter;
@@ -13,7 +14,6 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class ManualMovementMapper {
-
     public ManualMovement toDomain(ManualMovementEntity entity) {
         Objects.requireNonNull(entity, "A entidade do movimento é obrigatória.");
         ManualMovementEntityId id = entity.getId();
@@ -28,6 +28,23 @@ public class ManualMovementMapper {
                 entity.getMovementAt(),
                 entity.getUserCode(),
                 entity.getValue());
+    }
+
+    public ManualMovementProjection toProjection(ManualMovementEntity entity) {
+        Objects.requireNonNull(entity, "A entidade do movimento é obrigatória.");
+        ManualMovementEntityId id = entity.getId();
+        ProductCosifEntity productCosif = entity.getProductCosif();
+        return new ManualMovementProjection(
+                id.getMonth(),
+                id.getYear(),
+                id.getProductCode(),
+                id.getCosifCode(),
+                entity.getDescription(),
+                entity.getValue(),
+                productCosif.getProduct().getDescription(),
+                id.getLaunchNumber(),
+                entity.getMovementAt(),
+                entity.getUserCode());
     }
 
     public ManualMovementEntity toEntity(ManualMovement movement, ProductCosifEntity productCosif) {

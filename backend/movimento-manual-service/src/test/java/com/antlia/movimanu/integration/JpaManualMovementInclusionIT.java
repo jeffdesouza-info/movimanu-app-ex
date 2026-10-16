@@ -340,7 +340,7 @@ class JpaManualMovementInclusionIT {
             entityManager.persist(new ManualMovementEntity(
                     new ManualMovementEntityId(month, year, launchNumber, productCode, cosifCode),
                     "Movimento existente",
-                    Instant.parse("2025-01-01T12:00:00Z"),
+                Instant.parse("2025-01-01T12:00:00Z"),
                     "TESTE",
                     new BigDecimal("1.00"),
                     cosif));

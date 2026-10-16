@@ -2,7 +2,6 @@ package com.antlia.movimanu.infrastructure.persistence.repository;
 
 import java.util.Optional;
 
-import com.antlia.movimanu.application.projection.ManualMovementProjection;
 import com.antlia.movimanu.infrastructure.persistence.entity.ManualMovementEntity;
 import com.antlia.movimanu.infrastructure.persistence.entity.ManualMovementEntityId;
 import org.springframework.data.domain.Page;
@@ -13,20 +12,10 @@ import org.springframework.data.repository.query.Param;
 
 public interface ManualMovementJpaRepository extends JpaRepository<ManualMovementEntity, ManualMovementEntityId> {
     @Query(value = """
-            select new com.antlia.movimanu.application.projection.ManualMovementProjection(
-                movement.id.month,
-                movement.id.year,
-                movement.id.productCode,
-                movement.id.cosifCode,
-                movement.description,
-                movement.value,
-                product.description,
-                movement.id.launchNumber,
-                movement.movementAt,
-                movement.userCode)
+            select movement
             from ManualMovementEntity movement
-            join movement.productCosif cosif
-            join cosif.product product
+            join fetch movement.productCosif cosif
+            join fetch cosif.product product
             order by movement.id.year desc,
                      movement.id.month desc,
                      movement.id.launchNumber desc,
@@ -34,7 +23,7 @@ public interface ManualMovementJpaRepository extends JpaRepository<ManualMovemen
                      movement.id.cosifCode asc
             """,
             countQuery = "select count(movement) from ManualMovementEntity movement")
-    Page<ManualMovementProjection> findProjectedPage(Pageable pageable);
+    Page<ManualMovementEntity> findMovementPage(Pageable pageable);
 
     @Query("""
             select max(movement.id.launchNumber)

@@ -22,6 +22,7 @@ import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,6 +46,9 @@ class JpaQueryAdaptersIT {
 
     @Autowired
     private ManualMovementQueryPort manualMovementQueryPort;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -80,6 +84,31 @@ class JpaQueryAdaptersIT {
         assertThat(page.size()).isEqualTo(6);
         assertThat(page.totalElements()).isZero();
         assertThat(page.totalPages()).isZero();
+    }
+
+    @Test
+    void interpretsSqlTimestampAsUtcInJpaEntitiesAndMovementProjections() {
+        jdbcTemplate.update(
+                "INSERT INTO MOVIMENTO_MANUAL (DAT_MES, DAT_ANO, NUM_LANCAMENTO, COD_PRODUTO, COD_COSIF, "
+                        + "DES_DESCRICAO, DAT_MOVIMENTO, COD_USUARIO, VAL_VALOR) "
+                        + "VALUES (?, ?, ?, ?, ?, ?, TIMESTAMP '2026-01-01 12:00:00', ?, ?)",
+                1,
+                2026,
+                1L,
+                "0001",
+                "10000000001",
+                "Instante UTC",
+                "TESTE",
+                new BigDecimal("150.00"));
+        entityManager.clear();
+
+        ManualMovementEntity persisted = entityManager.find(
+                ManualMovementEntity.class,
+                new ManualMovementEntityId(1, 2026, 1L, "0001", "10000000001"));
+        MovementPage<ManualMovementProjection> page = findManualMovementsUseCase.execute(0);
+
+        assertThat(persisted.getMovementAt()).isEqualTo(Instant.parse("2026-01-01T12:00:00Z"));
+        assertThat(page.content().getFirst().movementAt()).isEqualTo(Instant.parse("2026-01-01T12:00:00Z"));
     }
 
     @Test

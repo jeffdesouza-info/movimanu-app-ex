@@ -5,6 +5,7 @@ import java.util.List;
 import com.antlia.movimanu.application.port.ManualMovementQueryPort;
 import com.antlia.movimanu.application.port.MovementPage;
 import com.antlia.movimanu.application.projection.ManualMovementProjection;
+import com.antlia.movimanu.infrastructure.persistence.mapper.ManualMovementMapper;
 import com.antlia.movimanu.infrastructure.persistence.repository.ManualMovementJpaRepository;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
@@ -14,9 +15,11 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class JpaManualMovementQueryAdapter implements ManualMovementQueryPort {
     private final ManualMovementJpaRepository repository;
+    private final ManualMovementMapper mapper;
 
-    public JpaManualMovementQueryAdapter(ManualMovementJpaRepository repository) {
+    public JpaManualMovementQueryAdapter(ManualMovementJpaRepository repository, ManualMovementMapper mapper) {
         this.repository = repository;
+        this.mapper = mapper;
     }
 
     @Override
@@ -27,8 +30,8 @@ public class JpaManualMovementQueryAdapter implements ManualMovementQueryPort {
             return new MovementPage<>(List.of(), page, totalElements);
         }
 
-        var result = repository.findProjectedPage(PageRequest.of(page, MovementPage.SIZE));
-        return new MovementPage<>(result.getContent(), page, totalElements);
+        var result = repository.findMovementPage(PageRequest.of(page, MovementPage.SIZE));
+        return new MovementPage<>(result.getContent().stream().map(mapper::toProjection).toList(), page, totalElements);
     }
 
     @Override

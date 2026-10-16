@@ -29,8 +29,8 @@ public class ManualMovementEntity {
     @Column(name = "DES_DESCRICAO", nullable = false, length = 50)
     private String description;
 
-    @Convert(converter = SmallDateTimeConverter.class)
     @Column(name = "DAT_MOVIMENTO", nullable = false, columnDefinition = "SMALLDATETIME")
+    @Convert(converter = SmallDateTimeConverter.class)
     private Instant movementAt;
 
     @Column(name = "COD_USUARIO", nullable = false, length = 15)
