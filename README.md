@@ -1,8 +1,8 @@
 # movimanu-app-ex
 
-Base do sistema de Movimentos Manuais, preparada para uma API REST em Java 21 com Spring Boot, Spring Cloud, DDD e persistência H2, além de um frontend Angular.
+Sistema de Movimentos Manuais com API REST em Java 21, Spring Boot, Spring Cloud, DDD e persistência H2, além de um frontend Angular em desenvolvimento.
 
-O backend já possui inicialização Spring Boot, JAR executável, perfis local e de testes, modelos de domínio, contratos de consulta e inclusão, persistência JPA e casos de uso com adaptadores de consulta e inclusão concorrente, com execução separada de testes unitários e de integração. O workspace Angular está inicializado com componentes standalone, Reactive Forms, HttpClient, ambientes, proxy local e testes iniciais. Os endpoints REST e os comportamentos funcionais da interface permanecem pendentes.
+O backend já possui inicialização Spring Boot, JAR executável, perfis local e de testes, modelos de domínio, persistência JPA, casos de uso de consulta e inclusão concorrente e os quatro endpoints REST, com validações e erros em `ProblemDetail`. Os testes unitários e de integração têm execução separada. O workspace Angular está inicializado com componentes standalone, Reactive Forms, HttpClient, ambientes, proxy local e testes iniciais. Permanecem pendentes a validação integrada consolidada do backend, os comportamentos funcionais da interface e a validação final da aplicação.
 
 ## Estrutura
 
@@ -56,7 +56,7 @@ Os modelos em `domain/model` usam campos diretos: `String` para códigos e descr
 
 As validações ficam nos construtores dos modelos, com apoio do auxiliar interno `ModelValidation`. Os códigos preservam zeros à esquerda e respeitam comprimentos máximos de quatro e onze caracteres. O valor valida a escala original e os limites antes de ser normalizado para duas casas, sem arredondamento.
 
-As portas em `application/port` definem consulta de produtos, COSIFs, movimentos, inclusão e execução de operações em nova transação. A consulta de movimentos recebe a página como `int` e retorna `MovementPage<ManualMovementProjection>`; a projeção em `application/projection` inclui a descrição do produto. Domínio e contratos permanecem independentes de Spring, JPA e HTTP. Os casos de uso e adaptadores de consulta e inclusão estão implementados. Os endpoints REST permanecem pendentes.
+As portas em `application/port` definem consulta de produtos, COSIFs, movimentos, inclusão e execução de operações em nova transação. A consulta de movimentos recebe a página como `int` e retorna `MovementPage<ManualMovementProjection>`; a projeção em `application/projection` inclui a descrição do produto. Domínio e contratos permanecem independentes de Spring, JPA e HTTP. Os casos de uso e adaptadores de consulta e inclusão estão implementados e são acessados pela interface REST, que usa DTOs próprios.
 
 ## Consultas implementadas
 
@@ -68,7 +68,7 @@ As portas em `application/port` definem consulta de produtos, COSIFs, movimentos
 
 Os adaptadores e repositórios ficam em `infrastructure/persistence/adapter` e `repository`. A configuração `QueryUseCaseConfiguration` conecta os casos de uso às portas. As dependências de Spring/JPA permanecem na infraestrutura.
 
-A consulta de movimentos constrói `ManualMovementProjection` por JPQL com joins para o produto/COSIF e o produto. A ordenação é por ano, mês e lançamento decrescentes, seguidos de produto e COSIF crescentes. A consulta do maior lançamento filtra somente mês e ano, independentemente do produto/COSIF.
+A consulta JPQL de movimentos carrega `ManualMovementEntity` com `join fetch` para o produto/COSIF e o produto. O adaptador usa `ManualMovementMapper.toProjection` para construir `ManualMovementProjection`, incluindo a descrição do produto sem consultas adicionais por linha e preservando a conversão temporal aplicada à entidade. A ordenação é por ano, mês e lançamento decrescentes, seguidos de produto e COSIF crescentes. A consulta do maior lançamento filtra somente mês e ano, independentemente do produto/COSIF.
 
 O adaptador calcula o deslocamento com `long` e consulta o total antes da busca paginada. Para página além dos resultados, retorna conteúdo vazio com a página solicitada, tamanho seis e totais reais, sem executar a busca paginada. Os testes cobrem sete movimentos com `page=2`, `357913942` e `Integer.MAX_VALUE`; os totais permanecem sete elementos e duas páginas.
 
@@ -80,13 +80,49 @@ O adaptador calcula o deslocamento com `long` e consulta o total antes da busca 
 
 `JpaManualMovementInclusionAdapter` grava por `EntityManager.persist` seguido de `flush`, garantindo somente inserção, sem atualizar um movimento existente por `merge`. A repetição ocorre após o rollback e reconhece `UK_MOVIMENTO_MANUAL_PERIODO_LANCAMENTO`, seu índice H2 e o formato `PK_MOVIMENTO_MANUAL INDEX PRIMARY_KEY_<n>`, com os prefixos de esquema reportados pelo H2. A colisão da chave completa também implica repetição de período/lançamento; outras chaves e erros de persistência não acionam novas tentativas.
 
-O caso de uso captura `ManualMovementSequenceCollisionException` e tenta novamente com nova transação e nova leitura, até três tentativas no total. Esgotamento ou limite da sequência gera `ManualMovementSequenceConflictException`. Os endpoints e a tradução dessas exceções para os retornos HTTP contratados permanecem pendentes.
+O caso de uso captura `ManualMovementSequenceCollisionException` e tenta novamente com nova transação e nova leitura, até três tentativas no total. Esgotamento ou limite da sequência gera `ManualMovementSequenceConflictException`, traduzida pela interface REST em HTTP `409`. Outros erros inesperados de persistência recebem HTTP `500` com mensagem genérica.
 
 ## Persistência JPA
 
 A infraestrutura em `infrastructure/persistence` contém `ProductEntity`, `ProductCosifEntity` e `ManualMovementEntity`, os identificadores compostos `ProductCosifEntityId` e `ManualMovementEntityId`, três mapeadores e `SmallDateTimeConverter`. As anotações JPA ficam na infraestrutura; os modelos de domínio mantêm campos diretos e independência de frameworks.
 
 A migração `V2__unique_period_launch_number.sql` adiciona `UK_MOVIMENTO_MANUAL_PERIODO_LANCAMENTO` sobre `(DAT_ANO, DAT_MES, NUM_LANCAMENTO)`, complementando a chave primária e impedindo a repetição por período inclusive entre produtos diferentes. A migração V1 foi preservada. A geração da sequência, as transações e as novas tentativas estão implementadas no fluxo de inclusão descrito acima.
+
+## API REST implementada
+
+`ManualMovementController`, em `interfaces/rest`, expõe os recursos abaixo. Sucessos usam `application/json`; erros usam `application/problem+json`.
+
+| Método e caminho | Comportamento |
+| --- | --- |
+| `GET /api/v1/produtos` | `200` com produtos ordenados por código; sem registros, retorna `[]`. |
+| `GET /api/v1/produtos/{codigoProduto}/cosifs` | `200` com COSIFs do produto; produto existente sem vínculos retorna `[]`; produto inexistente retorna `404`. |
+| `GET /api/v1/movimentos-manuais?page=0` | `200` com `content`, `page`, `size=6`, `totalElements` e `totalPages`. A página começa em zero; além dos resultados, mantém a página solicitada e os totais reais, com conteúdo vazio. |
+| `POST /api/v1/movimentos-manuais` | `201` com o movimento persistido, incluindo descrição do produto, lançamento, data/hora e usuário gerados pelo backend. |
+
+O POST recebe exatamente os seis campos abaixo; todos são obrigatórios e não nulos:
+
+```json
+{
+  "mes": 10,
+  "ano": 2026,
+  "codigoProduto": "0001",
+  "codigoCosif": "10000000001",
+  "descricao": "Ajuste manual",
+  "valor": "150.50"
+}
+```
+
+`mes` é inteiro de 1 a 12; `ano`, inteiro de 1 a 9999. Códigos são textos com até quatro e onze caracteres, preservando zeros à esquerda. A descrição deve conter ao menos um caractere diferente de espaço e ter até 50 caracteres, contando e preservando os espaços recebidos.
+
+`valor` é texto com sinal negativo opcional, de um a 16 dígitos inteiros e, opcionalmente, ponto seguido de uma ou duas casas. Zero, vírgula, milhar, notação científica, espaços e formatos mistos são rejeitados antes da conversão para `BigDecimal`. A resposta usa ponto e duas casas, sem perda de precisão. A aceitação de vírgula no formulário será tratada no frontend.
+
+`ProdutoResponse` contém `codigoProduto` e `descricaoProduto`; `CosifResponse`, `codigoCosif` e `codigoClassificacao`. `MovimentoResponse`, usado no POST e nos itens da consulta, contém os seis campos da entrada mais `descricaoProduto`, `numeroLancamento`, `dataMovimento` e `codigoUsuario`. Valor e lançamento são strings; a data usa ISO 8601 em UTC com segundos `00`, e o usuário é `TESTE`. Descrições de produto e classificações podem ser `null`; listas vazias são `[]`.
+
+Bean Validation e `IncluirMovimentoRequestDeserializer` rejeitam tipos JSON incompatíveis, propriedades não previstas e números fora da faixa de `int`, sem coerção silenciosa. `PageParameterParser` adota página zero quando omitida e rejeita parâmetro vazio, negativo, não inteiro ou fora da faixa de `int` com `400` associado a `page`.
+
+`RestExceptionHandler` retorna `ProblemDetail` com `type="about:blank"`, `title`, `status`, `detail`, `instance` e a extensão `errors` no primeiro nível. `instance` contém o caminho com `/api/v1`, sem query string. Cada erro de campo contém `field` e `message` em pt-BR; tipos incompatíveis e estouro de `int` em `mes` ou `ano` preservam o campo. Erros globais ou sem campo identificável usam `errors=[]`.
+
+Entradas inválidas retornam `400`; no POST, produto inexistente é associado a `codigoProduto`, e COSIF sem vínculo, a `codigoCosif`. Produto inexistente na consulta de COSIFs retorna `404`. Conflitos de sequência retornam `409`; falhas inesperadas retornam `500`, sem expor detalhes internos.
 
 ## Pré-requisitos
 
@@ -119,16 +155,20 @@ Em Linux/macOS, use `./mvnw test`, `./mvnw clean verify` e barras `/` no caminho
 
 ## Validação do backend
 
-Na validação final da inclusão concorrente, o Codex reportou sucesso em `.\mvnw.cmd test` e `.\mvnw.cmd clean verify`. Os XMLs Surefire/Failsafe fornecidos foram conferidos e confirmam os resultados da tabela, sem sobreposição entre os grupos. Testes e build não foram executados novamente nesta atualização documental.
+Na validação final da T007, o Codex reportou sucesso em `.\mvnw.cmd clean verify` com a JVM em `America/Sao_Paulo`, com os resultados abaixo. O teste unitário focado do desserializador teve 12 execuções aprovadas, já incluídas no total unitário. Esta atualização documental se baseia no relato de execução e na revisão estática do código fornecido; os XMLs desta etapa não foram fornecidos e testes e build não foram executados novamente aqui.
 
 | Grupo | Executados | Falhas | Erros | Ignorados |
 | --- | --- | --- | --- | --- |
-| Unitários — Surefire (`*Test`) | 70 | 0 | 0 | 0 |
-| Integração — Failsafe (`*IT`) | 17 | 0 | 0 | 0 |
+| Unitários — Surefire (`*Test`) | 119 | 0 | 0 | 0 |
+| Integração — Failsafe (`*IT`) | 65 | 0 | 0 | 0 |
 
-Os testes unitários verificam modelos, validações, projeção, paginação, identificadores JPA, mapeadores, conversor temporal, casos de uso e adaptadores de consulta e inclusão, além da declaração do ponto de entrada Spring Boot. As 70 execuções incluem os dois casos parametrizados de página com deslocamento acima de `Integer.MAX_VALUE`. Na inclusão, cobrem primeiro lançamento, continuidade após o máximo, vínculo inválido, limite numérico, repetição restrita a colisões, esgotamento das três tentativas e propagação de outros erros. O teste do adaptador verifica a ordem `persist`/`flush` e a ausência de chamada a `merge`.
+Os testes unitários verificam modelos, validações, projeção, paginação, identificadores JPA, mapeadores, conversor temporal, casos de uso e adaptadores de consulta e inclusão, além da declaração do ponto de entrada Spring Boot. Na inclusão, cobrem primeiro lançamento, continuidade após o máximo, vínculo inválido, limite numérico, repetição restrita a colisões, esgotamento das três tentativas e propagação de outros erros. O teste do adaptador verifica a ordem `persist`/`flush` e a ausência de chamada a `merge`.
 
-Os testes de integração verificam o esquema migrado, os relacionamentos persistidos, a conversão temporal, a restrição única entre produtos diferentes, a carga demonstrativa local e as consultas. `src/test/java/com/antlia/movimanu/integration/JpaQueryAdaptersIT.java`, relativo ao módulo backend, cobre produto sem COSIFs versus inexistente, coleções vazias, projeção, ordenação, páginas normais e além dos resultados, páginas com deslocamento alto e maior lançamento por período.
+A interface REST possui testes unitários próprios em `src/test/java/com/antlia/movimanu/unit/interfaces/rest`: validação do valor textual, Bean Validation do DTO, desserialização sem coerção, parsing de `page` e tratamento de erros. Os limites `2147483648` e `-2147483649` são exercitados em `mes` e `ano`, verificando a identificação do campo no erro.
+
+Os testes de integração verificam o esquema migrado, os relacionamentos persistidos, a conversão temporal, a restrição única entre produtos diferentes, a carga demonstrativa local e as consultas. `src/test/java/com/antlia/movimanu/integration/JpaQueryAdaptersIT.java`, relativo ao módulo backend, cobre produto sem COSIFs versus inexistente, coleções vazias, projeção, ordenação, páginas normais e além dos resultados, páginas com deslocamento alto e maior lançamento por período. Também verifica que o literal SQL `2026-01-01 12:00:00` é lido como `2026-01-01T12:00:00Z` na entidade e na projeção.
+
+`src/test/java/com/antlia/movimanu/integration/ManualMovementRestIT.java` cobre os quatro endpoints, DTOs, paginação, respostas de erro, precisão decimal, dados automáticos e preservação dos espaços de descrições válidas. As rejeições incluem ausência de dados, tipos incompatíveis, propriedades desconhecidas, descrição inválida e formatos monetários inválidos. Os quatro casos de estouro de `int` em mês/ano verificam HTTP `400`, campo correto e ausência de persistência. A leitura REST da data também espera `2026-01-01T12:00:00Z` para o mesmo literal SQL.
 
 `src/test/java/com/antlia/movimanu/integration/JpaManualMovementInclusionIT.java` acrescenta oito testes de inclusão. Eles verificam numeração, lacunas, períodos distintos, vínculo inválido, limite de 18 dígitos, dados automáticos e concorrência entre produtos diferentes. Duas regressões determinísticas usam o mesmo produto/COSIF em períodos vazio e preenchido: ambas as operações leem o mesmo máximo, a segunda gravação aguarda o commit da primeira e as asserções conferem a colisão identificada, nova leitura, ausência de gravação adicional na tentativa rejeitada e preservação das descrições e valores nos dois lançamentos finais. O perfil de teste mantém o banco em memória sem a carga demonstrativa.
 
@@ -147,15 +187,9 @@ Os caminhos abaixo são relativos a `backend/movimento-manual-service`:
 | Relatórios de integração HTML e XML | `target/site/jacoco-integration/index.html` e `target/site/jacoco-integration/jacoco.xml` |
 | Relatórios consolidados HTML e XML | `target/site/jacoco/index.html` e `target/site/jacoco/jacoco.xml` |
 
-Os XMLs JaCoCo conferidos apresentam a seguinte cobertura de linhas:
+Na execução final da T007, o Codex informou **551/551 linhas elegíveis cobertas, zero descobertas e 100% no consolidado**, com aprovação da verificação configurada. Também informou a geração dos relatórios unitário e de integração nos caminhos acima, sem apresentar os percentuais separados desta execução. As exclusões de configuração e inicialização foram preservadas; a exigência de 100% de linhas aplica-se ao consolidado.
 
-| Grupo | Linhas cobertas | Linhas descobertas | Cobertura |
-| --- | --- | --- | --- |
-| Unitários | 354/364 | 10 | 97,25% |
-| Integração | 300/364 | 64 | 82,42% |
-| Consolidado | **364/364** | **0** | **100%** |
-
-O consolidado corresponde à união das linhas cobertas e das duas sessões registradas nos relatórios por grupo, preservando as exclusões de configuração e inicialização. A exigência de 100% de linhas aplica-se ao consolidado; o Codex reportou aprovação da verificação configurada. A cobertura abrange o código implementado até esta etapa. Os contratos REST, a integração via HTTP e os comportamentos funcionais da interface permanecem nas próximas tarefas.
+Na rodada anterior de correção da T007, o Codex reportou `clean verify` aprovado com a JVM em `UTC` e em `America/Sao_Paulo`, incluindo as regressões temporais SQL/JPA/projeção/REST. A rodada final acrescentou os limites de `int` e corrigiu a hierarquia de `format_sql`, preservando a solução temporal. A cobertura atual abrange o código implementado até a T007; a validação integrada consolidada do backend, os comportamentos funcionais da interface e a validação final da aplicação permanecem nas tarefas seguintes.
 
 Na validação inicial do backend, o Flyway avisou que a versão resolvida do H2 era mais nova que a versão com a qual havia sido verificado. A migração e os testes passaram, mantendo-se as versões gerenciadas pelo projeto.
 
@@ -250,7 +284,9 @@ O perfil `cloud` espera `DB_URL`, `DB_USER` e `DB_PASSWORD`, sem vincular o proj
 
 No H2, `SMALLDATETIME` é representado por um domínio SQL sobre `TIMESTAMP(0)`, definido em `backend/movimento-manual-service/src/main/resources/db/migration/V1__create_manual_movement_schema.sql`. A precisão `(0)` indica ausência de casas fracionárias nos segundos; essa representação ainda admite segundos diferentes de `00`.
 
-O comportamento temporal é complementado na infraestrutura por `SmallDateTimeConverter`, aplicado ao atributo `movementAt` da entidade. O conversor trata os instantes em UTC, arredonda ao minuto com segundos em `00` e verifica a faixa de `1900-01-01` a `2079-06-06` antes e depois do arredondamento. O mapeador de movimentos também usa essa normalização ao criar a entidade.
+O comportamento temporal é complementado na infraestrutura por `SmallDateTimeConverter`, aplicado ao atributo `movementAt` da entidade, mantido como `Instant`. O conversor faz a conversão explícita entre `Instant` e `LocalDateTime` em UTC, arredonda ao minuto com segundos em `00` e verifica a faixa de `1900-01-01` a `2079-06-06` antes e depois do arredondamento. O mapeador de movimentos também usa essa normalização ao criar a entidade.
+
+Como a coluna SQL não armazena fuso, a configuração global `hibernate.jdbc.time_zone=UTC` foi removida para preservar a conversão explícita do atributo neste mapeamento. A consulta monta a projeção a partir da entidade convertida, e a REST formata o `Instant` em UTC, sem compensação fixa de horas. `format_sql` está configurado em `spring.jpa.properties.hibernate.format_sql`.
 
 A implementação arredonda para baixo quando os segundos são inferiores a `29.999` e para cima a partir de `29.999`, inclusive em viradas de dia ou ano. O último minuto representável é `2079-06-06T23:59:00Z`; entradas cujo arredondamento ultrapassaria a faixa são rejeitadas.
 
@@ -260,6 +296,7 @@ As evidências de teste abaixo usam caminhos relativos a `backend/movimento-manu
 | --- | --- |
 | `src/test/java/com/antlia/movimanu/unit/infrastructure/persistence/converter/SmallDateTimeConverterTest.java` | Valores imediatamente abaixo e no limiar de `29.999` segundos, virada de ano, limites mínimo/máximo, rejeição fora da faixa e após arredondamento, conversão nos dois sentidos em UTC e nulos. |
 | `src/test/java/com/antlia/movimanu/integration/JpaPersistenceIT.java` | Gravação e releitura do horário arredondado, relacionamentos compostos, valor decimal e rejeição de lançamento repetido no período entre produtos diferentes. |
+| `src/test/java/com/antlia/movimanu/integration/JpaQueryAdaptersIT.java` e `ManualMovementRestIT.java` no mesmo diretório | Leitura do literal SQL `2026-01-01 12:00:00` como `2026-01-01T12:00:00Z` na entidade, na projeção e na resposta REST. |
 
 A equivalência temporal descrita corresponde ao comportamento implementado no adaptador e aos cenários de teste acima; o domínio SQL sobre `TIMESTAMP(0)` continua sendo apenas a representação do tipo no H2. A validação final da aplicação deverá reconfirmar esses testes e a execução com banco persistente.
 
