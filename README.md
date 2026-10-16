@@ -2,7 +2,7 @@
 
 Base do sistema de Movimentos Manuais, preparada para uma API REST em Java 21 com Spring Boot, Spring Cloud, DDD e persistência H2, além de um frontend Angular.
 
-O backend já possui inicialização Spring Boot, JAR executável, perfis local e de testes, modelos de domínio, contratos de consulta e inclusão, persistência JPA e casos de uso com adaptadores de consulta, com execução separada de testes unitários e de integração. O workspace Angular está inicializado com componentes standalone, Reactive Forms, HttpClient, ambientes, proxy local e testes iniciais. O fluxo de inclusão, os endpoints REST e os comportamentos funcionais da interface permanecem pendentes.
+O backend já possui inicialização Spring Boot, JAR executável, perfis local e de testes, modelos de domínio, contratos de consulta e inclusão, persistência JPA e casos de uso com adaptadores de consulta e inclusão concorrente, com execução separada de testes unitários e de integração. O workspace Angular está inicializado com componentes standalone, Reactive Forms, HttpClient, ambientes, proxy local e testes iniciais. Os endpoints REST e os comportamentos funcionais da interface permanecem pendentes.
 
 ## Estrutura
 
@@ -56,7 +56,7 @@ Os modelos em `domain/model` usam campos diretos: `String` para códigos e descr
 
 As validações ficam nos construtores dos modelos, com apoio do auxiliar interno `ModelValidation`. Os códigos preservam zeros à esquerda e respeitam comprimentos máximos de quatro e onze caracteres. O valor valida a escala original e os limites antes de ser normalizado para duas casas, sem arredondamento.
 
-As quatro portas em `application/port` definem consulta de produtos, COSIFs, movimentos e inclusão. A consulta de movimentos recebe a página como `int` e retorna `MovementPage<ManualMovementProjection>`; a projeção em `application/projection` inclui a descrição do produto. Domínio e contratos permanecem independentes de Spring, JPA e HTTP. Os casos de uso e adaptadores de consulta estão implementados. O fluxo de inclusão e os endpoints REST permanecem pendentes.
+As portas em `application/port` definem consulta de produtos, COSIFs, movimentos, inclusão e execução de operações em nova transação. A consulta de movimentos recebe a página como `int` e retorna `MovementPage<ManualMovementProjection>`; a projeção em `application/projection` inclui a descrição do produto. Domínio e contratos permanecem independentes de Spring, JPA e HTTP. Os casos de uso e adaptadores de consulta e inclusão estão implementados. Os endpoints REST permanecem pendentes.
 
 ## Consultas implementadas
 
@@ -72,11 +72,21 @@ A consulta de movimentos constrói `ManualMovementProjection` por JPQL com joins
 
 O adaptador calcula o deslocamento com `long` e consulta o total antes da busca paginada. Para página além dos resultados, retorna conteúdo vazio com a página solicitada, tamanho seis e totais reais, sem executar a busca paginada. Os testes cobrem sete movimentos com `page=2`, `357913942` e `Integer.MAX_VALUE`; os totais permanecem sete elementos e duas páginas.
 
+## Inclusão concorrente
+
+`IncludeManualMovementUseCase` recebe `MovementDraft`, valida o vínculo produto/COSIF e calcula o maior lançamento do mês/ano acrescido de um, iniciando em um quando o período está vazio. A sequência independe de produto/COSIF; o limite `999999999999999999` é verificado antes do incremento. Vínculo inexistente gera `ProductCosifNotFoundException`.
+
+`TransactionExecutionPort` mantém o contrato transacional independente de frameworks. Na infraestrutura, `SpringTransactionExecutionAdapter` usa `TransactionTemplate` com `REQUIRES_NEW`: cada tentativa repete validação do vínculo, leitura do máximo e gravação em uma transação própria. `InclusionUseCaseConfiguration` fornece `Clock.systemUTC()`; data/hora e usuário `TESTE` são gerados no backend, com normalização temporal pelo mapeador e conversor.
+
+`JpaManualMovementInclusionAdapter` grava por `EntityManager.persist` seguido de `flush`, garantindo somente inserção, sem atualizar um movimento existente por `merge`. A repetição ocorre após o rollback e reconhece `UK_MOVIMENTO_MANUAL_PERIODO_LANCAMENTO`, seu índice H2 e o formato `PK_MOVIMENTO_MANUAL INDEX PRIMARY_KEY_<n>`, com os prefixos de esquema reportados pelo H2. A colisão da chave completa também implica repetição de período/lançamento; outras chaves e erros de persistência não acionam novas tentativas.
+
+O caso de uso captura `ManualMovementSequenceCollisionException` e tenta novamente com nova transação e nova leitura, até três tentativas no total. Esgotamento ou limite da sequência gera `ManualMovementSequenceConflictException`. Os endpoints e a tradução dessas exceções para os retornos HTTP contratados permanecem pendentes.
+
 ## Persistência JPA
 
 A infraestrutura em `infrastructure/persistence` contém `ProductEntity`, `ProductCosifEntity` e `ManualMovementEntity`, os identificadores compostos `ProductCosifEntityId` e `ManualMovementEntityId`, três mapeadores e `SmallDateTimeConverter`. As anotações JPA ficam na infraestrutura; os modelos de domínio mantêm campos diretos e independência de frameworks.
 
-A migração `V2__unique_period_launch_number.sql` adiciona `UK_MOVIMENTO_MANUAL_PERIODO_LANCAMENTO` sobre `(DAT_ANO, DAT_MES, NUM_LANCAMENTO)`, complementando a chave primária e impedindo a repetição por período inclusive entre produtos diferentes. A migração V1 foi preservada. A geração da sequência, as transações e as novas tentativas da inclusão concorrente permanecem pendentes.
+A migração `V2__unique_period_launch_number.sql` adiciona `UK_MOVIMENTO_MANUAL_PERIODO_LANCAMENTO` sobre `(DAT_ANO, DAT_MES, NUM_LANCAMENTO)`, complementando a chave primária e impedindo a repetição por período inclusive entre produtos diferentes. A migração V1 foi preservada. A geração da sequência, as transações e as novas tentativas estão implementadas no fluxo de inclusão descrito acima.
 
 ## Pré-requisitos
 
@@ -109,16 +119,18 @@ Em Linux/macOS, use `./mvnw test`, `./mvnw clean verify` e barras `/` no caminho
 
 ## Validação do backend
 
-Na validação final reportada das consultas, após a correção da paginação, `.\mvnw.cmd clean verify` concluiu com sucesso. A execução inicial de `.\mvnw.cmd test` também passou. A tabela registra os resultados finais informados pelo Codex; testes e build não foram executados novamente nesta atualização documental.
+Na validação final da inclusão concorrente, o Codex reportou sucesso em `.\mvnw.cmd test` e `.\mvnw.cmd clean verify`. Os XMLs Surefire/Failsafe fornecidos foram conferidos e confirmam os resultados da tabela, sem sobreposição entre os grupos. Testes e build não foram executados novamente nesta atualização documental.
 
 | Grupo | Executados | Falhas | Erros | Ignorados |
 | --- | --- | --- | --- | --- |
-| Unitários — Surefire (`*Test`) | 53 | 0 | 0 | 0 |
-| Integração — Failsafe (`*IT`) | 9 | 0 | 0 | 0 |
+| Unitários — Surefire (`*Test`) | 70 | 0 | 0 | 0 |
+| Integração — Failsafe (`*IT`) | 17 | 0 | 0 | 0 |
 
-Os testes unitários verificam modelos, validações, projeção, paginação, identificadores JPA, mapeadores, conversor temporal, casos de uso e adaptadores de consulta, além da declaração do ponto de entrada Spring Boot. As 53 execuções incluem os dois casos parametrizados de página com deslocamento acima de `Integer.MAX_VALUE`, conferindo também a ausência de chamada à busca paginada.
+Os testes unitários verificam modelos, validações, projeção, paginação, identificadores JPA, mapeadores, conversor temporal, casos de uso e adaptadores de consulta e inclusão, além da declaração do ponto de entrada Spring Boot. As 70 execuções incluem os dois casos parametrizados de página com deslocamento acima de `Integer.MAX_VALUE`. Na inclusão, cobrem primeiro lançamento, continuidade após o máximo, vínculo inválido, limite numérico, repetição restrita a colisões, esgotamento das três tentativas e propagação de outros erros. O teste do adaptador verifica a ordem `persist`/`flush` e a ausência de chamada a `merge`.
 
-Os testes de integração verificam o esquema migrado, os relacionamentos persistidos, a conversão temporal, a restrição única entre produtos diferentes, a carga demonstrativa local e as consultas. `src/test/java/com/antlia/movimanu/integration/JpaQueryAdaptersIT.java`, relativo ao módulo backend, cobre produto sem COSIFs versus inexistente, coleções vazias, projeção, ordenação, páginas normais e além dos resultados, páginas com deslocamento alto e maior lançamento por período. O perfil de teste mantém o banco em memória sem a carga demonstrativa.
+Os testes de integração verificam o esquema migrado, os relacionamentos persistidos, a conversão temporal, a restrição única entre produtos diferentes, a carga demonstrativa local e as consultas. `src/test/java/com/antlia/movimanu/integration/JpaQueryAdaptersIT.java`, relativo ao módulo backend, cobre produto sem COSIFs versus inexistente, coleções vazias, projeção, ordenação, páginas normais e além dos resultados, páginas com deslocamento alto e maior lançamento por período.
+
+`src/test/java/com/antlia/movimanu/integration/JpaManualMovementInclusionIT.java` acrescenta oito testes de inclusão. Eles verificam numeração, lacunas, períodos distintos, vínculo inválido, limite de 18 dígitos, dados automáticos e concorrência entre produtos diferentes. Duas regressões determinísticas usam o mesmo produto/COSIF em períodos vazio e preenchido: ambas as operações leem o mesmo máximo, a segunda gravação aguarda o commit da primeira e as asserções conferem a colisão identificada, nova leitura, ausência de gravação adicional na tentativa rejeitada e preservação das descrições e valores nos dois lançamentos finais. O perfil de teste mantém o banco em memória sem a carga demonstrativa.
 
 Na preparação inicial do backend, o JAR executável iniciou no perfil `local`, com H2 persistente e aplicação da migração `V1__create_manual_movement_schema.sql`.
 
@@ -135,7 +147,15 @@ Os caminhos abaixo são relativos a `backend/movimento-manual-service`:
 | Relatórios de integração HTML e XML | `target/site/jacoco-integration/index.html` e `target/site/jacoco-integration/jacoco.xml` |
 | Relatórios consolidados HTML e XML | `target/site/jacoco/index.html` e `target/site/jacoco/jacoco.xml` |
 
-Na execução reportada, o JaCoCo consolidado registrou **277 de 277 linhas elegíveis cobertas (100%)**, com aprovação da verificação configurada e preservação das exclusões existentes de configuração e inicialização. A cobertura abrange o código implementado até esta etapa. O fluxo e o adaptador de inclusão, os contratos REST e os comportamentos funcionais da interface permanecem nas próximas tarefas.
+Os XMLs JaCoCo conferidos apresentam a seguinte cobertura de linhas:
+
+| Grupo | Linhas cobertas | Linhas descobertas | Cobertura |
+| --- | --- | --- | --- |
+| Unitários | 354/364 | 10 | 97,25% |
+| Integração | 300/364 | 64 | 82,42% |
+| Consolidado | **364/364** | **0** | **100%** |
+
+O consolidado corresponde à união das linhas cobertas e das duas sessões registradas nos relatórios por grupo, preservando as exclusões de configuração e inicialização. A exigência de 100% de linhas aplica-se ao consolidado; o Codex reportou aprovação da verificação configurada. A cobertura abrange o código implementado até esta etapa. Os contratos REST, a integração via HTTP e os comportamentos funcionais da interface permanecem nas próximas tarefas.
 
 Na validação inicial do backend, o Flyway avisou que a versão resolvida do H2 era mais nova que a versão com a qual havia sido verificado. A migração e os testes passaram, mantendo-se as versões gerenciadas pelo projeto.
 
