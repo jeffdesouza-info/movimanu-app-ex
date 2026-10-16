@@ -2,7 +2,7 @@
 
 Sistema de Movimentos Manuais com API REST em Java 21, Spring Boot, Spring Cloud, DDD e persistência H2, além de um frontend Angular em desenvolvimento.
 
-O backend já possui inicialização Spring Boot, JAR executável, perfis local e de testes, modelos de domínio, persistência JPA, casos de uso de consulta e inclusão concorrente e os quatro endpoints REST, com validações e erros em `ProblemDetail`. A validação integrada do backend está concluída, com execução separada de testes unitários e de integração. O frontend Angular já possui consulta automática de movimentos, grid de sete colunas, paginação e estados de carregamento, erro e ausência de registros. O formulário permanece no estado visual inicial; suas interações, o fluxo de inclusão e a validação final da aplicação pertencem às próximas tarefas.
+O backend já possui inicialização Spring Boot, JAR executável, perfis local e de testes, modelos de domínio, persistência JPA, casos de uso de consulta e inclusão concorrente e os quatro endpoints REST, com validações e erros em `ProblemDetail`. A validação integrada do backend está concluída, com execução separada de testes unitários e de integração. O frontend Angular já possui consulta automática de movimentos, grid de sete colunas, paginação e estados de carregamento, erro e ausência de registros. O formulário interativo carrega produtos/COSIFs, valida os campos e emite o payload de inclusão. A integração do POST, seu tratamento e a validação final da aplicação pertencem às próximas tarefas.
 
 ## Estrutura
 
@@ -45,6 +45,8 @@ O backend já possui inicialização Spring Boot, JAR executável, perfis local 
             |   `-- features/manual-movements/
             |       |-- manual-movements-api.service.ts
             |       |-- manual-movements.models.ts
+            |       |-- manual-movement-form.validators.ts
+            |       |-- manual-movement-form.validators.spec.ts
             |       |-- manual-movements-page.component.ts
             |       |-- manual-movements-page.component.html
             |       |-- manual-movements-page.component.css
@@ -209,7 +211,7 @@ Os XMLs JaCoCo fornecidos e conferidos apresentam a seguinte cobertura de linhas
 
 O consolidado corresponde à união das linhas cobertas e das duas sessões registradas nos relatórios por grupo, com o mesmo conjunto de classes e as exclusões de configuração e inicialização. A exigência de 100% de linhas aplica-se ao consolidado; o Codex reportou aprovação da verificação configurada.
 
-Na validação temporal da T007, o Codex reportou `clean verify` aprovado com a JVM em `UTC` e em `America/Sao_Paulo`, incluindo as regressões SQL/JPA/projeção/REST. A T008 preservou o código de produção e complementou os testes REST existentes. A validação integrada do backend está concluída. A consulta visual do frontend também está implementada; o formulário interativo, o fluxo de inclusão e a validação final da aplicação permanecem nas tarefas seguintes.
+Na validação temporal da T007, o Codex reportou `clean verify` aprovado com a JVM em `UTC` e em `America/Sao_Paulo`, incluindo as regressões SQL/JPA/projeção/REST. A T008 preservou o código de produção e complementou os testes REST existentes. A validação integrada do backend está concluída. A consulta visual e o formulário interativo do frontend também estão implementados; a integração do POST, seu tratamento e a validação final da aplicação permanecem nas tarefas seguintes.
 
 Na execução atual, o Flyway avisou que o H2 `2.4.240` é mais recente que a versão verificada, `2.3.232`. A validação das migrações e os testes passaram, mantendo-se as versões gerenciadas pelo projeto.
 
@@ -262,32 +264,45 @@ A aplicação é servida em `http://localhost:4200`. O proxy configurado em `pro
 
 ### Consulta visual implementada
 
-`ManualMovementsPageComponent`, em `src/app/features/manual-movements/`, apresenta o formulário no estado visual inicial e o grid com Mês, Ano, Código do Produto, Descrição do Produto, Nr Lançamento, Descrição do Movimento e Valor, nessa ordem. No desktop, Mês/Ano e Produto/Cosif ocupam duas colunas; Valor, Descrição e os botões Limpar, Novo e Incluir ficam na coluna esquerda, com as ações abaixo da descrição. Os estilos também preveem disposição em uma coluna para telas pequenas e rolagem horizontal do grid quando necessária.
+`ManualMovementsPageComponent`, em `src/app/features/manual-movements/`, apresenta o formulário e o grid com Mês, Ano, Código do Produto, Descrição do Produto, Nr Lançamento, Descrição do Movimento e Valor, nessa ordem. No desktop, Mês/Ano e Produto/Cosif ocupam duas colunas; Valor, Descrição e os botões Limpar, Novo e Incluir ficam na coluna esquerda, com as ações abaixo da descrição. Os estilos também preveem disposição em uma coluna para telas pequenas e rolagem horizontal do grid quando necessária.
 
 `ManualMovementsApiService.listPage` consulta `GET /api/v1/movimentos-manuais?page=0` ao carregar a tela. As próximas consultas usam a página solicitada, mantendo a ordenação recebida da API. O componente consome `content`, `page`, `size`, `totalElements` e `totalPages`; a navegação oferece Primeira, Anterior e Próxima e respeita os limites informados. O serviço e os modelos mantêm códigos, valor e lançamento como textos. No grid, o valor troca o ponto decimal por vírgula por operação textual, preservando sinal e precisão.
 
-O grid indica carregamento, ausência de movimentos e falha de consulta. Em erro, exibe `detail` quando informado pela API ou uma mensagem genérica em pt-BR; Tentar novamente repete somente o GET da página solicitada. O fluxo usa `switchMap` para descartar consultas anteriores e encerra a assinatura com o componente.
+O grid indica carregamento, ausência de movimentos e falha de consulta. Em erro, exibe `detail` quando informado pela API ou uma mensagem genérica em pt-BR; Tentar novamente repete somente o GET da página solicitada. O fluxo usa `switchMap` para descartar consultas anteriores e encerra a assinatura ao destruir o componente.
 
 Uma página vazia com total de registros maior que zero recebe mensagem própria, sem intervalo invertido no resumo. Os metadados retornados permanecem intactos; somente o número apresentado no indicador é limitado ao total de páginas. Primeira e Anterior continuam disponíveis quando a página recebida é maior que zero, inclusive com `totalPages=1`; Próxima fica indisponível além do limite.
 
-Campos e botões do formulário permanecem desabilitados nesta etapa, com textos vazios e as combo-boxes em `-- Selecione --`. A interação de Novo, Limpar e Incluir, as consultas de produtos/COSIFs e as validações do formulário pertencem à próxima etapa; o POST e o fluxo após a inclusão também permanecem pendentes.
+### Formulário interativo implementado
 
-### Validação da T009
+O formulário usa Reactive Forms e inicia com os textos vazios, Produto/Cosif em `-- Selecione --` com valor nulo e os campos desabilitados. Novo fica disponível; ao acioná-lo, a tela entra no modo de inclusão, habilita os campos e consulta `GET /api/v1/produtos`. Cosif permanece desabilitado até a consulta do produto selecionado terminar. Produtos exibem sua descrição; COSIFs exibem `codigoCosif - (codigoClassificacao)`. A consulta de produtos apresenta carregamento e, em falha, mensagem com nova tentativa.
 
-Na execução final reportada pelo Codex, `npm test` passou com **dois arquivos e oito testes**, e `npm run build` passou. Foram informados Node.js `24.21.0` e npm `11.19.0`. Testes e build não foram executados novamente nesta revisão ou atualização documental; não foi fornecido relatório persistido da execução dos testes do frontend.
+A seleção de Produto consulta `GET /api/v1/produtos/{codigoProduto}/cosifs`. A troca de produto ou uma nova tentativa limpa as opções e a seleção de Cosif, indica carregamento e desabilita esse campo. `switchMap` cancela consultas obsoletas; o tratamento de falhas dentro do fluxo permite novas trocas e tentativas. Em falha, Cosif permanece vazio e desabilitado, e Tentar novamente consulta somente o produto atual, preservando os demais dados. Em sucesso, as opções ficam disponíveis sem seleção automática. Incluir depende também do estado carregado e de um COSIF presente nas opções recebidas.
+
+Limpar esvazia os textos e retorna ambas as seleções a nulo, mantendo o modo de inclusão. A ação cancela a consulta de COSIFs pendente, limpa suas opções e mensagens e mantém Cosif indisponível até uma nova consulta. O reset publica o valor nulo de Produto para que `distinctUntilChanged` reconheça a limpeza e permita selecionar novamente o mesmo código, tanto após uma consulta concluída quanto durante uma consulta pendente.
+
+Os validadores em `manual-movement-form.validators.ts` exigem mês inteiro de 1 a 12 com até dois dígitos e ano inteiro de 1 a 9999 com até quatro dígitos. Descrição é obrigatória, deve conter ao menos um caractere diferente de espaço e admite até 50 caracteres, incluindo os espaços preservados. Os erros são exibidos junto aos campos, e Incluir permanece indisponível com dados inválidos.
+
+Valor é texto decimal simples, diferente de zero, com sinal negativo opcional, até 16 dígitos inteiros e até duas casas após vírgula ou ponto. Milhar, formatos mistos, notação científica, espaços e símbolos monetários são rejeitados. A formatação ao sair do campo usa vírgula e duas casas, sem milhar; entradas inválidas permanecem disponíveis para correção. A conversão para o contrato da API usa somente operações textuais, como `150,5` → `"150.50"`, `-150,00` → `"-150.00"` e `9999999999999999,99` → `"9999999999999999.99"`, sem ponto flutuante ou arredondamento.
+
+Com os dados válidos, Incluir emite `includeRequested` com o payload de seis campos: mês/ano como números, códigos e descrição como textos e valor textual com ponto e duas casas. A descrição conserva o texto informado. O componente ainda não envia o POST; o bloqueio durante o envio, o tratamento de sucesso/erro e a atualização do grid após persistência pertencem à próxima etapa.
+
+### Validação da T010
+
+Na execução final reportada pelo Codex, `npm test` passou com **três arquivos e 19 testes**, e `npm run build` passou **sem avisos de orçamento CSS**, preservando os orçamentos configurados. As versões informadas na execução da T010 foram Node.js `24.21.0` e npm `11.19.0`. Testes e build não foram executados novamente nesta revisão ou atualização documental; não foi fornecido relatório persistido da execução dos testes do frontend.
 
 | Arquivo, relativo ao workspace | Testes nos fontes revisados | Cenários |
 | --- | --- | --- |
 | `src/app/app.spec.ts` | 2 | Criação da aplicação e renderização do título da página de movimentos. |
-| `src/app/features/manual-movements/manual-movements-page.component.spec.ts` | 6 | GET inicial, carregamento, sete colunas, preservação da ordem recebida, seis registros e o restante na página seguinte, navegação, coleção vazia, erro com nova tentativa e páginas vazias além dos resultados, inclusive com `totalPages=1`. |
+| `src/app/features/manual-movements/manual-movement-form.validators.spec.ts` | 4 | Limites de mês/ano, descrição com conteúdo e espaços preservados, limites de tamanho, formatos monetários aceitos/rejeitados e conversão/formatação textual exata. |
+| `src/app/features/manual-movements/manual-movements-page.component.spec.ts` | 13 | Consulta e paginação, estados da tela, Novo, carregamento de produtos, carregamento/erro/nova tentativa de COSIFs, descarte de consulta anterior, Limpar, mensagens de validação, preservação da entrada inválida e emissão do payload sem POST. |
 
-A revisão dos fontes confirmou os oito testes e os ajustes de paginação. Os cálculos do resumo e da navegação foram conferidos isoladamente, incluindo páginas normais e vazias além dos resultados, com preservação dos metadados.
+As duas regressões de Limpar verificam a seleção do mesmo produto após consulta de COSIFs concluída ou pendente: novo GET, cancelamento da requisição pendente quando aplicável, carregamento, Cosif desabilitado durante a consulta e habilitado após sucesso, sem seleção automática. A revisão dos fontes confirmou essas asserções e o total de 19 testes. Também foram conferidos isoladamente 25 exemplos monetários, incluindo sinal, limite e preservação da entrada inválida; essa conferência complementa a revisão, sem substituir a suíte Angular.
 
-A captura fornecida da aplicação em `http://localhost:4200` confirmou, em desktop e com a consulta vazia, a disposição dos campos e botões, os cabeçalhos das sete colunas sem sobreposição e a indicação de ausência de movimentos. A captura não demonstra navegação com registros, carregamento, erros ou o layout em telas pequenas; esses cenários permanecem sujeitos à validação final da aplicação, complementando os testes existentes.
+Na conferência visual da T009, a captura fornecida da aplicação em `http://localhost:4200` confirmou, em desktop e com a consulta vazia, a disposição dos campos e botões, os cabeçalhos das sete colunas sem sobreposição e a indicação de ausência de movimentos. A captura antecede o formulário interativo da T010. A revisão desta etapa conferiu fontes e testes; a interação em navegador e a validação completa da aplicação permanecem para a validação final.
 
-A saída de build informada fica em `dist/movimanu-web/`, relativa ao workspace, com arquivos de navegador em `browser/` conforme a configuração do projeto. A partir da raiz do repositório, o caminho corresponde a `frontend/movimanu-web/dist/movimanu-web/browser/`. Os diretórios `dist/`, `node_modules/` e `.angular/cache/` são ignorados pelo Git.
+A saída de build informada fica em `dist/movimanu-web/browser/`, relativa ao workspace, correspondendo a `frontend/movimanu-web/dist/movimanu-web/browser/` a partir da raiz do repositório. Os diretórios `dist/`, `node_modules/` e `.angular/cache/` são ignorados pelo Git.
 
-A T009 está concluída. O formulário interativo, a integração do POST, a complementação dos testes do frontend e a validação final da aplicação permanecem pendentes.
+As tarefas T009 e T010 estão concluídas. A integração do POST, a complementação dos testes do frontend e a validação final da aplicação permanecem pendentes.
 
 Referências técnicas: [configuração do workspace Angular](https://angular.dev/reference/configs/workspace-config), [build](https://angular.dev/cli/build) e [proxy de desenvolvimento](https://angular.dev/tools/cli/serve).
 
