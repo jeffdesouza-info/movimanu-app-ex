@@ -42,4 +42,14 @@ class JpaProductCosifQueryAdapterTest {
 
         assertThat(adapter.findAllByProduct("0003")).isEmpty();
     }
+
+    @Test
+    void checksWhetherTheExactProductCosifLinkExists() {
+        ProductCosifId id = new ProductCosifId("0001", "10000000001");
+        when(repository.existsById(new ProductCosifEntityId("0001", "10000000001"))).thenReturn(true);
+
+        assertThat(adapter.existsById(id)).isTrue();
+
+        verify(repository).existsById(new ProductCosifEntityId("0001", "10000000001"));
+    }
 }

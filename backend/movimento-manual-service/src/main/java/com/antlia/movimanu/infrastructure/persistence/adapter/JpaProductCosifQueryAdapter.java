@@ -4,6 +4,8 @@ import java.util.List;
 
 import com.antlia.movimanu.application.port.ProductCosifQueryPort;
 import com.antlia.movimanu.domain.model.ProductCosif;
+import com.antlia.movimanu.domain.model.ProductCosifId;
+import com.antlia.movimanu.infrastructure.persistence.entity.ProductCosifEntityId;
 import com.antlia.movimanu.infrastructure.persistence.mapper.ProductCosifMapper;
 import com.antlia.movimanu.infrastructure.persistence.repository.ProductCosifJpaRepository;
 import org.springframework.stereotype.Repository;
@@ -22,5 +24,10 @@ public class JpaProductCosifQueryAdapter implements ProductCosifQueryPort {
     @Override
     public List<ProductCosif> findAllByProduct(String productCode) {
         return repository.findAllByProductCode(productCode).stream().map(mapper::toDomain).toList();
+    }
+
+    @Override
+    public boolean existsById(ProductCosifId id) {
+        return repository.existsById(new ProductCosifEntityId(id.productCode(), id.cosifCode()));
     }
 }

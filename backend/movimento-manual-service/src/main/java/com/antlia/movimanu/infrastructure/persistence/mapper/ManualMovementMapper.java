@@ -9,7 +9,9 @@ import com.antlia.movimanu.infrastructure.persistence.entity.ManualMovementEntit
 import com.antlia.movimanu.infrastructure.persistence.entity.ManualMovementEntityId;
 import com.antlia.movimanu.infrastructure.persistence.entity.ProductCosifEntity;
 import com.antlia.movimanu.infrastructure.persistence.entity.ProductCosifEntityId;
+import org.springframework.stereotype.Component;
 
+@Component
 public class ManualMovementMapper {
 
     public ManualMovement toDomain(ManualMovementEntity entity) {
