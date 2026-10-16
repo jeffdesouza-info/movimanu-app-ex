@@ -2,7 +2,7 @@
 
 Sistema de Movimentos Manuais com API REST em Java 21, Spring Boot, Spring Cloud, DDD e persistência H2, além de um frontend Angular para consulta e inclusão.
 
-O backend já possui inicialização Spring Boot, JAR executável, perfis local e de testes, modelos de domínio, persistência JPA, casos de uso de consulta e inclusão concorrente e os quatro endpoints REST, com validações e erros em `ProblemDetail`. A validação integrada do backend está concluída, com execução separada de testes unitários e de integração. O frontend Angular já possui consulta automática de movimentos, grid de sete colunas, paginação e estados de carregamento, erro e ausência de registros. O formulário interativo carrega produtos/COSIFs, valida os campos e integra a inclusão ao backend, com bloqueio durante o envio, recuperação em falha e atualização do grid após sucesso. A complementação dos testes do frontend e a validação final da aplicação pertencem às próximas tarefas.
+O backend já possui inicialização Spring Boot, JAR executável, perfis local e de testes, modelos de domínio, persistência JPA, casos de uso de consulta e inclusão concorrente e os quatro endpoints REST, com validações e erros em `ProblemDetail`. A validação integrada do backend está concluída, com execução separada de testes unitários e de integração. O frontend Angular já possui consulta automática de movimentos, grid de sete colunas, paginação e estados de carregamento, erro e ausência de registros. O formulário interativo carrega produtos/COSIFs, valida os campos e integra a inclusão ao backend, com bloqueio durante o envio, recuperação em falha e atualização do grid após sucesso. A validação unitária do frontend está concluída, com 28 testes aprovados em três arquivos. A validação final com a aplicação iniciada e a persistência após reinício permanece pendente.
 
 ## Estrutura
 
@@ -211,7 +211,7 @@ Os XMLs JaCoCo fornecidos e conferidos apresentam a seguinte cobertura de linhas
 
 O consolidado corresponde à união das linhas cobertas e das duas sessões registradas nos relatórios por grupo, com o mesmo conjunto de classes e as exclusões de configuração e inicialização. A exigência de 100% de linhas aplica-se ao consolidado; o Codex reportou aprovação da verificação configurada.
 
-Na validação temporal da T007, o Codex reportou `clean verify` aprovado com a JVM em `UTC` e em `America/Sao_Paulo`, incluindo as regressões SQL/JPA/projeção/REST. A T008 preservou o código de produção e complementou os testes REST existentes. A validação integrada do backend está concluída. A consulta visual e o fluxo de inclusão do frontend também estão implementados; a complementação dos testes do frontend e a validação final da aplicação permanecem nas tarefas seguintes.
+Na validação temporal da T007, o Codex reportou `clean verify` aprovado com a JVM em `UTC` e em `America/Sao_Paulo`, incluindo as regressões SQL/JPA/projeção/REST. A T008 preservou o código de produção e complementou os testes REST existentes. A validação integrada do backend está concluída. A consulta visual, o fluxo de inclusão e a validação unitária do frontend também estão concluídos. A validação final da aplicação permanece pendente.
 
 Na execução atual, o Flyway avisou que o H2 `2.4.240` é mais recente que a versão verificada, `2.3.232`. A validação das migrações e os testes passaram, mantendo-se as versões gerenciadas pelo projeto.
 
@@ -294,25 +294,34 @@ Em falha do POST, o componente retorna ao modo de inclusão e restaura a ediçã
 
 Após confirmação de sucesso, o formulário fica vazio e desabilitado, Produto/Cosif retornam à seleção nula e a tela volta ao modo de consulta. O reset publica explicitamente o valor nulo de Produto para atualizar `distinctUntilChanged`, permitindo iniciar uma nova inclusão com o mesmo produto. O componente consulta a primeira página do grid; se esse GET falhar, Tentar novamente repete somente essa consulta, sem reenviar o movimento já incluído.
 
-### Validação da T011
+### Validação do frontend — T012
 
-Na execução final reportada pelo Codex, `npm test` passou com **três arquivos e 22 testes**, e `npm run build` passou **sem avisos**. As versões informadas na execução da T011 foram Node.js `24.21.0` e npm `11.19.0`. Testes e build não foram executados novamente nesta revisão ou atualização documental; não foi fornecido relatório persistido da execução dos testes do frontend.
+Na execução da T012, o Codex reportou `npm ci` concluído com 296 pacotes instalados pelo lockfile e terminal usando Node.js `24.21.0` e npm `11.19.0`. As capturas fornecidas confirmam `npm test` aprovado com **três arquivos e 28 testes** e `npm run build` concluído, sem avisos nas saídas apresentadas. O Codex também reportou `git diff --check` sem problemas. Os comandos foram executados em `frontend/movimanu-web`.
+
+A revisão comparou os fontes com a implementação aprovada da T011 e confirmou alterações somente nos dois arquivos de testes de validadores e do componente. As regressões anteriores foram preservadas; foram acrescentados seis testes do componente e ampliados os casos dos validadores e da restauração após falha do POST. Testes e build não foram executados novamente nesta revisão ou atualização documental. A suíte não configura relatório persistido de testes; as evidências recebidas são as saídas do terminal em captura e o relato da execução.
 
 | Arquivo, relativo ao workspace | Testes nos fontes revisados | Cenários |
 | --- | --- | --- |
 | `src/app/app.spec.ts` | 2 | Criação da aplicação e renderização do título da página de movimentos. |
-| `src/app/features/manual-movements/manual-movement-form.validators.spec.ts` | 4 | Limites de mês/ano, descrição com conteúdo e espaços preservados, limites de tamanho, formatos monetários aceitos/rejeitados e conversão/formatação textual exata. |
-| `src/app/features/manual-movements/manual-movements-page.component.spec.ts` | 16 | Consulta e paginação, estados do formulário, produtos/COSIFs, Limpar, validações, POST com payload exato, bloqueio durante envio, preservação de dados e erros por campo após falha, reset após sucesso, repetição somente do GET e inclusões consecutivas do mesmo produto. |
+| `src/app/features/manual-movements/manual-movement-form.validators.spec.ts` | 4 | Limites de mês/ano, descrição com conteúdo e espaços preservados, limite total de tamanho, formatos monetários aceitos/rejeitados, representações de zero, equivalência entre vírgula e ponto e conversão/formatação textual exata. |
+| `src/app/features/manual-movements/manual-movements-page.component.spec.ts` | 22 | Consulta e paginação, estados do formulário, produtos/COSIFs e coleções vazias, Limpar, validações e mensagens nos campos, POST com payload exato, bloqueio durante envio, preservação dos dados e erros por campo após falha, reset após sucesso, repetição somente do GET e inclusões consecutivas do mesmo produto. |
 
-As regressões de Limpar verificam que é possível selecionar novamente o mesmo produto após a limpeza, tanto com a consulta de COSIFs concluída quanto pendente. A nova regressão percorre duas inclusões consecutivas do mesmo produto: confere formulário vazio e desabilitado após cada sucesso, novo GET de COSIFs no segundo ciclo, carregamento, habilitação sem seleção automática e conclusão da segunda inclusão.
+Os complementos da T012 verificam:
 
-Os testes de envio verificam o bloqueio dos seis campos e dos três botões, a preservação dos dados e a ausência de POST adicional durante o envio. Também verificam a restauração após falha com mensagem geral e erro de campo, a limpeza das mensagens ao editar e a nova tentativa somente do GET após inclusão bem-sucedida. A revisão dos fontes confirmou essas asserções e o total de 22 testes. A conferência isolada de 25 exemplos monetários realizada na T010 permanece complementar à suíte Angular.
+- Descrição vazia ou formada somente por espaços, mensagem no campo, indicação de invalidade, preservação do texto e bloqueio do POST; aceitação de 50 caracteres e rejeição de 51, contando espaços.
+- Formatação monetária sem milhar ao sair do campo, preservação da entrada inválida e envio exato de `9999999999999999,99` como `"9999999999999999.99"`. Os validadores também conferem `1,23` e `1.23` como equivalentes e rejeitam diferentes representações de zero, além dos formatos e limites já cobertos.
+- Coleções vazias de produtos e COSIFs com inclusão indisponível, rejeição de COSIF sem seleção ou fora das opções carregadas e troca de produto após falha da consulta, preservando os demais dados e aguardando seleção explícita após o sucesso.
+- Restauração das ações após falha confirmada do POST e recálculo de Incluir conforme a validade dos dados: valor zero bloqueia o envio e a correção para valor negativo válido permite continuar.
 
-Na conferência visual da T009, a captura fornecida da aplicação em `http://localhost:4200` confirmou, em desktop e com a consulta vazia, a disposição dos campos e botões, os cabeçalhos das sete colunas sem sobreposição e a indicação de ausência de movimentos. A captura antecede o formulário interativo e o fluxo de inclusão. A revisão da T011 conferiu fontes e testes; a interação em navegador com o backend e a validação completa da aplicação permanecem para a validação final.
+As regressões reaproveitadas conferem carregamento, erro e nova tentativa de COSIFs do produto atual, cancelamento de consultas obsoletas e limpeza durante a consulta. Limpar permite selecionar novamente o mesmo produto tanto após uma consulta concluída quanto pendente. Duas inclusões consecutivas do mesmo produto verificam formulário vazio e desabilitado após cada sucesso, novo GET de COSIFs no segundo ciclo e habilitação sem seleção automática. Os testes de envio mantêm as verificações de bloqueio dos seis campos e dos três botões, ausência de POST adicional, restauração com valores e seleções preservados e nova tentativa somente do GET após sucesso. A consulta e a paginação continuam cobertas, incluindo metadados e páginas vazias além dos resultados.
+
+A suíte exercita o componente e seus contratos HTTP com requisições simuladas. A revisão dos fontes confirmou as asserções e o total de 28 testes. A conferência isolada de 25 exemplos monetários realizada na T010 permanece complementar à suíte Angular.
+
+Na conferência visual da T009, a captura fornecida da aplicação em `http://localhost:4200` confirmou, em desktop e com a consulta vazia, a disposição dos campos e botões, os cabeçalhos das sete colunas sem sobreposição e a indicação de ausência de movimentos. Essa captura antecede o formulário interativo e o fluxo de inclusão. A interação em navegador com o backend, a confirmação completa dos critérios de aceite e a persistência após reinício permanecem para a T013.
 
 A saída de build informada fica em `dist/movimanu-web/browser/`, relativa ao workspace, correspondendo a `frontend/movimanu-web/dist/movimanu-web/browser/` a partir da raiz do repositório. Os diretórios `dist/`, `node_modules/` e `.angular/cache/` são ignorados pelo Git.
 
-As tarefas T009, T010 e T011 estão concluídas. A complementação dos testes do frontend e a validação final da aplicação permanecem pendentes; os testes existentes devem ser reaproveitados, complementando somente as lacunas identificadas.
+As tarefas T009, T010, T011 e T012 estão concluídas. A T013 permanece pendente para a validação final da aplicação e o registro das evidências correspondentes.
 
 Referências técnicas: [configuração do workspace Angular](https://angular.dev/reference/configs/workspace-config), [build](https://angular.dev/cli/build) e [proxy de desenvolvimento](https://angular.dev/tools/cli/serve).
 
