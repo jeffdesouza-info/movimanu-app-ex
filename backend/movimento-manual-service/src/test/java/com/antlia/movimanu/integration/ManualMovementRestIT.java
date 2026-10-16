@@ -2,7 +2,11 @@ package com.antlia.movimanu.integration;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.HashSet;
+import java.util.Set;
 
+import com.antlia.movimanu.application.exception.ManualMovementSequenceCollisionException;
+import com.antlia.movimanu.application.port.ManualMovementInclusionPort;
 import com.antlia.movimanu.application.usecase.IncludeManualMovementUseCase;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -25,7 +29,10 @@ import org.springframework.web.context.WebApplicationContext;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.http.MediaType.APPLICATION_PROBLEM_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -53,6 +60,9 @@ class ManualMovementRestIT {
     @MockitoSpyBean
     private IncludeManualMovementUseCase includeManualMovementUseCase;
 
+    @MockitoSpyBean
+    private ManualMovementInclusionPort movementInclusionPort;
+
     @BeforeEach
     void configuresMockMvc() {
         mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).build();
@@ -70,13 +80,21 @@ class ManualMovementRestIT {
         jdbcTemplate.update("INSERT INTO PRODUTO (COD_PRODUTO, DES_PRODUTO, STA_STATUS) VALUES (?, ?, ?)",
                 "0003", null, "A");
 
-        mockMvc.perform(get(API + "/produtos"))
+        MvcResult result = mockMvc.perform(get(API + "/produtos"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
                 .andExpect(jsonPath("$[0].codigoProduto").value("0001"))
                 .andExpect(jsonPath("$[0].descricaoProduto").value("Produto de fixture A"))
                 .andExpect(jsonPath("$[2].codigoProduto").value("0003"))
-                .andExpect(jsonPath("$[2].descricaoProduto").value(org.hamcrest.Matchers.nullValue()));
+                .andExpect(jsonPath("$[2].descricaoProduto").value(org.hamcrest.Matchers.nullValue()))
+                .andReturn();
+
+        JsonNode products = objectMapper.readTree(result.getResponse().getContentAsString());
+        assertFields(products.get(0), "codigoProduto", "descricaoProduto");
+        assertThat(products.get(0).get("codigoProduto").isTextual()).isTrue();
+        assertThat(products.get(0).get("descricaoProduto").isTextual()).isTrue();
+        assertFields(products.get(2), "codigoProduto", "descricaoProduto");
+        assertThat(products.get(2).get("descricaoProduto").isNull()).isTrue();
     }
 
     @Test
@@ -98,11 +116,19 @@ class ManualMovementRestIT {
                         + "VALUES (?, ?, ?, ?)",
                 "0001", "10000000002", null, "A");
 
-        mockMvc.perform(get(API + "/produtos/0001/cosifs"))
+        MvcResult result = mockMvc.perform(get(API + "/produtos/0001/cosifs"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].codigoCosif").value("10000000001"))
                 .andExpect(jsonPath("$[1].codigoCosif").value("10000000002"))
-                .andExpect(jsonPath("$[1].codigoClassificacao").value(org.hamcrest.Matchers.nullValue()));
+                .andExpect(jsonPath("$[1].codigoClassificacao").value(org.hamcrest.Matchers.nullValue()))
+                .andReturn();
+
+        JsonNode cosifs = objectMapper.readTree(result.getResponse().getContentAsString());
+        assertFields(cosifs.get(0), "codigoCosif", "codigoClassificacao");
+        assertThat(cosifs.get(0).get("codigoCosif").isTextual()).isTrue();
+        assertThat(cosifs.get(0).get("codigoClassificacao").isTextual()).isTrue();
+        assertFields(cosifs.get(1), "codigoCosif", "codigoClassificacao");
+        assertThat(cosifs.get(1).get("codigoClassificacao").isNull()).isTrue();
 
         mockMvc.perform(get(API + "/produtos/0003/cosifs"))
                 .andExpect(status().isOk())
@@ -126,7 +152,7 @@ class ManualMovementRestIT {
     void returnsPagedMovementDtosWithTheSpecifiedMetadataAndTextualNumbers() throws Exception {
         seedSevenMovements();
 
-        mockMvc.perform(get(API + "/movimentos-manuais"))
+        MvcResult firstPageResult = mockMvc.perform(get(API + "/movimentos-manuais"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
                 .andExpect(jsonPath("$.content.length()").value(6))
@@ -141,7 +167,19 @@ class ManualMovementRestIT {
                 .andExpect(jsonPath("$.page").value(0))
                 .andExpect(jsonPath("$.size").value(6))
                 .andExpect(jsonPath("$.totalElements").value(7))
-                .andExpect(jsonPath("$.totalPages").value(2));
+                .andExpect(jsonPath("$.totalPages").value(2))
+                .andReturn();
+
+        JsonNode firstPage = objectMapper.readTree(firstPageResult.getResponse().getContentAsString());
+        assertFields(firstPage, "content", "page", "size", "totalElements", "totalPages");
+        assertThat(firstPage.get("content").isArray()).isTrue();
+        assertThat(firstPage.get("page").isIntegralNumber()).isTrue();
+        assertThat(firstPage.get("size").isIntegralNumber()).isTrue();
+        assertThat(firstPage.get("totalElements").isIntegralNumber()).isTrue();
+        assertThat(firstPage.get("totalPages").isIntegralNumber()).isTrue();
+        assertFields(firstPage.get("content").get(0),
+                "mes", "ano", "codigoProduto", "codigoCosif", "descricao", "valor",
+                "descricaoProduto", "numeroLancamento", "dataMovimento", "codigoUsuario");
 
         mockMvc.perform(get(API + "/movimentos-manuais").param("page", "1"))
                 .andExpect(status().isOk())
@@ -156,6 +194,16 @@ class ManualMovementRestIT {
                 .andExpect(jsonPath("$.size").value(6))
                 .andExpect(jsonPath("$.totalElements").value(7))
                 .andExpect(jsonPath("$.totalPages").value(2));
+
+        for (int page : new int[] {357_913_942, Integer.MAX_VALUE}) {
+            mockMvc.perform(get(API + "/movimentos-manuais").param("page", Integer.toString(page)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.content").isEmpty())
+                    .andExpect(jsonPath("$.page").value(page))
+                    .andExpect(jsonPath("$.size").value(6))
+                    .andExpect(jsonPath("$.totalElements").value(7))
+                    .andExpect(jsonPath("$.totalPages").value(2));
+        }
     }
 
     @Test
@@ -207,10 +255,54 @@ class ManualMovementRestIT {
                 .andReturn();
 
         JsonNode response = objectMapper.readTree(result.getResponse().getContentAsString());
+        assertFields(response,
+                "mes", "ano", "codigoProduto", "codigoCosif", "descricao", "valor",
+                "descricaoProduto", "numeroLancamento", "dataMovimento", "codigoUsuario");
+        assertThat(response.get("mes").isIntegralNumber()).isTrue();
+        assertThat(response.get("ano").isIntegralNumber()).isTrue();
+        assertThat(response.get("codigoProduto").isTextual()).isTrue();
+        assertThat(response.get("codigoCosif").isTextual()).isTrue();
+        assertThat(response.get("descricao").isTextual()).isTrue();
+        assertThat(response.get("valor").isTextual()).isTrue();
+        assertThat(response.get("descricaoProduto").isTextual()).isTrue();
+        assertThat(response.get("numeroLancamento").isTextual()).isTrue();
+        assertThat(response.get("dataMovimento").isTextual()).isTrue();
+        assertThat(response.get("codigoUsuario").isTextual()).isTrue();
         Instant movementAt = Instant.parse(response.get("dataMovimento").asText());
         assertThat(movementAt.getNano()).isZero();
         assertThat(movementAt.atOffset(java.time.ZoneOffset.UTC).getSecond()).isZero();
         assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM MOVIMENTO_MANUAL", Long.class)).isEqualTo(1L);
+    }
+
+    @Test
+    void acceptsAndPreservesAValidDescriptionOfExactlyFiftyCharacters() throws Exception {
+        String description = " " + "A".repeat(48) + " ";
+
+        postJson(movementJson(10, 2026, "0001", "10000000001", description, "150.00"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.descricao").value(description));
+
+        assertThat(description).hasSize(50);
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT DES_DESCRICAO FROM MOVIMENTO_MANUAL", String.class)).isEqualTo(description);
+    }
+
+    @ParameterizedTest
+    @CsvSource(delimiter = '|', value = {
+        "150|150.00",
+        "150.5|150.50",
+        "150.50|150.50",
+        "-150.00|-150.00",
+        "9999999999999999.99|9999999999999999.99"
+    })
+    void acceptsApiMoneyFormatsAndPreservesTheirExactDecimalValue(String input, String expected) throws Exception {
+        postJson(movementJson(10, 2026, "0001", "10000000001", "Ajuste", input))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.valor").value(expected));
+
+        BigDecimal persisted = jdbcTemplate.queryForObject(
+                "SELECT VAL_VALOR FROM MOVIMENTO_MANUAL", BigDecimal.class);
+        assertThat(persisted).isEqualByComparingTo(expected);
     }
 
     @Test
@@ -230,9 +322,14 @@ class ManualMovementRestIT {
     @ValueSource(strings = {"", "   ", "123456789012345678901234567890123456789012345678901"})
     void rejectsDescriptionsWithoutContentOrBeyondFiftyCharacters(String description) throws Exception {
         long before = movementCount();
-        postJson(movementJson(10, 2026, "0001", "10000000001", description, "150.00"))
+        MvcResult result = postJson(movementJson(10, 2026, "0001", "10000000001", description, "150.00"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.errors[0].field").value("descricao"));
+                .andExpect(jsonPath("$.errors[0].field").value("descricao"))
+                .andExpect(jsonPath("$.errors[0].message").value(description.length() > 50
+                        ? "A descrição deve ter até 50 caracteres."
+                        : "A descrição deve conter ao menos um caractere diferente de espaço."))
+                .andReturn();
+        assertProblemShape(result, 400);
         assertThat(movementCount()).isEqualTo(before);
     }
 
@@ -248,7 +345,7 @@ class ManualMovementRestIT {
 
     @ParameterizedTest
     @ValueSource(strings = {
-        "0", "0.00", "-0.00", "1,23", "1.234", "1,234", "1.234,56", "1,234.56", "1 234,56", "1e3",
+        "", "+150", "0", "0.00", "-0.00", "1,23", "1.234", "1,234", "1.234,56", "1,234.56", "1 234,56", "1e3",
         "1E3", "150.001", "10000000000000000.00", " 150.00", "$150.00"
     })
     void rejectsInvalidMoneyTextsOnTheApiWithoutPersisting(String value) throws Exception {
@@ -370,6 +467,25 @@ class ManualMovementRestIT {
     }
 
     @Test
+    void reportsA409AfterThreeSequenceCollisionsWithoutPersisting() throws Exception {
+        long before = movementCount();
+        doAnswer(invocation -> {
+            throw new ManualMovementSequenceCollisionException(
+                    new IllegalStateException("colisão controlada para teste"));
+        }).when(movementInclusionPort).insert(any());
+
+        MvcResult result = postJson(movementJson(10, 2026, "0001", "10000000001", "Ajuste", "150.00"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.title").value("Conflito de inclusão"))
+                .andExpect(jsonPath("$.errors").isEmpty())
+                .andReturn();
+
+        assertProblemShape(result, 409);
+        assertThat(movementCount()).isEqualTo(before);
+        verify(movementInclusionPort, times(3)).insert(any());
+    }
+
+    @Test
     void hidesUnexpectedInfrastructureMessagesInThe500Problem() throws Exception {
         doThrow(new IllegalStateException("detalhe interno sensível"))
                 .when(includeManualMovementUseCase)
@@ -445,11 +561,33 @@ class ManualMovementRestIT {
     private void assertProblemShape(MvcResult result, int expectedStatus) throws Exception {
         JsonNode problem = objectMapper.readTree(result.getResponse().getContentAsString());
         assertThat(problem.get("type").asText()).isEqualTo("about:blank");
+        String expectedTitle = switch (expectedStatus) {
+            case 400 -> "Requisição inválida";
+            case 404 -> "Recurso não encontrado";
+            case 409 -> "Conflito de inclusão";
+            case 500 -> "Erro interno";
+            default -> throw new IllegalArgumentException("Status de problema não previsto.");
+        };
+        assertThat(problem.get("title").asText()).isEqualTo(expectedTitle);
+        assertThat(problem.get("status").isIntegralNumber()).isTrue();
         assertThat(problem.get("status").asInt()).isEqualTo(expectedStatus);
         assertThat(problem.get("detail").asText()).isNotBlank();
         assertThat(problem.get("instance").asText()).startsWith(API + "/");
         assertThat(problem.get("instance").asText()).doesNotContain("?");
         assertThat(problem.get("errors").isArray()).isTrue();
+        for (JsonNode error : problem.get("errors")) {
+            assertFields(error, "field", "message");
+            assertThat(error.get("field").isTextual()).isTrue();
+            assertThat(error.get("field").asText()).isNotBlank();
+            assertThat(error.get("message").isTextual()).isTrue();
+            assertThat(error.get("message").asText()).isNotBlank();
+        }
         assertThat(result.getResponse().getContentType()).startsWith(APPLICATION_PROBLEM_JSON.toString());
+    }
+
+    private void assertFields(JsonNode object, String... expectedFields) {
+        Set<String> actualFields = new HashSet<>();
+        object.fieldNames().forEachRemaining(actualFields::add);
+        assertThat(actualFields).containsExactlyInAnyOrder(expectedFields);
     }
 }
