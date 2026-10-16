@@ -310,6 +310,102 @@ describe('ManualMovementsPageComponent', () => {
     expect(component.includeEnabled()).toBe(false);
   });
 
+  it('switches products after a COSIF failure and keeps the new selection pending', () => {
+    const fixture = createLoadedFixture();
+    startInclusion(fixture);
+    const component = fixture.componentInstance;
+    component.movementForm.patchValue({
+      mes: '12',
+      ano: '2026',
+      valor: '150,5',
+      descricao: '  Ajuste manual  ',
+    });
+    component.movementForm.controls.codigoProduto.setValue('0001');
+
+    expectCosifRequest('0001').flush(
+      { detail: 'Falha temporária' },
+      { status: 503, statusText: 'Service Unavailable' },
+    );
+    fixture.detectChanges();
+    expect(component.cosifsState()).toBe('error');
+    expect(component.cosifErrorMessage()).toContain('Não foi possível carregar');
+
+    component.movementForm.controls.codigoProduto.setValue('0002');
+    const currentProductRequest = expectCosifRequest('0002');
+    fixture.detectChanges();
+
+    expect(component.cosifsState()).toBe('loading');
+    expect(component.cosifErrorMessage()).toBeNull();
+    expect(component.cosifs()).toEqual([]);
+    expect(component.movementForm.controls.codigoCosif.value).toBeNull();
+    expect(component.movementForm.controls.codigoCosif.disabled).toBe(true);
+    expect(component.movementForm.getRawValue()).toEqual({
+      mes: '12',
+      ano: '2026',
+      codigoProduto: '0002',
+      codigoCosif: null,
+      valor: '150,5',
+      descricao: '  Ajuste manual  ',
+    });
+    expect(component.includeEnabled()).toBe(false);
+
+    currentProductRequest.flush([
+      { codigoCosif: '20000000002', codigoClassificacao: '654321' },
+    ]);
+    fixture.detectChanges();
+    expect(component.cosifsState()).toBe('loaded');
+    expect(component.cosifs()).toEqual([
+      { codigoCosif: '20000000002', codigoClassificacao: '654321' },
+    ]);
+    expect(component.movementForm.controls.codigoCosif.enabled).toBe(true);
+    expect(component.movementForm.controls.codigoCosif.value).toBeNull();
+    expect(component.includeEnabled()).toBe(false);
+    httpTesting.expectNone((request) => request.method === 'POST');
+  });
+
+  it('handles an empty product collection without enabling inclusion', () => {
+    const fixture = createLoadedFixture();
+    buttonByText(fixture.nativeElement as HTMLElement, 'Novo')?.click();
+    fixture.detectChanges();
+    expectProductsRequest().flush([]);
+    fixture.detectChanges();
+
+    const component = fixture.componentInstance;
+    const host = fixture.nativeElement as HTMLElement;
+    expect(component.productsState()).toBe('loaded');
+    expect(component.products()).toEqual([]);
+    expect(host.querySelector('#codigoProduto')?.textContent?.trim()).toBe('-- Selecione --');
+    expect(component.includeEnabled()).toBe(false);
+    expect(buttonByText(host, 'Incluir')?.disabled).toBe(true);
+    component.includeMovement();
+    httpTesting.expectNone((request) => request.method === 'POST');
+  });
+
+  it('handles an empty COSIF collection without enabling inclusion', () => {
+    const fixture = createLoadedFixture();
+    startInclusion(fixture);
+    const component = fixture.componentInstance;
+    const host = fixture.nativeElement as HTMLElement;
+    component.movementForm.patchValue({
+      mes: '1',
+      ano: '2026',
+      valor: '1',
+      descricao: 'Ajuste',
+    });
+    component.movementForm.controls.codigoProduto.setValue('0001');
+    expectCosifRequest('0001').flush([]);
+    fixture.detectChanges();
+
+    expect(component.cosifsState()).toBe('loaded');
+    expect(component.cosifs()).toEqual([]);
+    expect(host.querySelector('#codigoCosif')?.textContent?.trim()).toBe('-- Selecione --');
+    expect(component.movementForm.controls.codigoCosif.value).toBeNull();
+    expect(component.includeEnabled()).toBe(false);
+    expect(buttonByText(host, 'Incluir')?.disabled).toBe(true);
+    component.includeMovement();
+    httpTesting.expectNone((request) => request.method === 'POST');
+  });
+
   it('discards COSIF responses from an earlier product selection', () => {
     const fixture = createLoadedFixture();
     startInclusion(fixture);
@@ -490,6 +586,154 @@ describe('ManualMovementsPageComponent', () => {
       valor: '',
       descricao: '',
     });
+  });
+
+  it('shows description errors, preserves the input and accepts exactly 50 characters', () => {
+    const fixture = createLoadedFixture();
+    startInclusion(fixture);
+    const component = fixture.componentInstance;
+    const host = fixture.nativeElement as HTMLElement;
+    component.movementForm.controls.codigoProduto.setValue('0001');
+    expectCosifRequest('0001').flush(cosifs());
+    fixture.detectChanges();
+    component.movementForm.patchValue({
+      mes: '1',
+      ano: '2026',
+      codigoCosif: '10000000001',
+      valor: '150',
+    });
+
+    const description = component.movementForm.controls.descricao;
+    description.markAsTouched();
+    fixture.detectChanges();
+    expect(component.fieldError('descricao')).toBe('Campo obrigatório.');
+    expect(host.querySelector('#descricao')?.getAttribute('aria-invalid')).toBe('true');
+    expect(host.querySelector('#descricao-error')?.textContent).toContain('Campo obrigatório.');
+    expect(buttonByText(host, 'Incluir')?.disabled).toBe(true);
+    component.includeMovement();
+    httpTesting.expectNone((request) => request.method === 'POST');
+
+    description.setValue('   ');
+    description.markAsTouched();
+    fixture.detectChanges();
+    expect(component.fieldError('descricao')).toContain('caractere diferente de espaço');
+    expect(description.value).toBe('   ');
+    expect(host.querySelector('#descricao')?.getAttribute('aria-invalid')).toBe('true');
+    expect(host.querySelector('#descricao-error')?.textContent).toContain(
+      'caractere diferente de espaço',
+    );
+    expect(buttonByText(host, 'Incluir')?.disabled).toBe(true);
+    component.includeMovement();
+    httpTesting.expectNone((request) => request.method === 'POST');
+
+    const validDescription = 'x'.repeat(50);
+    description.setValue(validDescription);
+    fixture.detectChanges();
+    expect(description.valid).toBe(true);
+    expect(description.value).toBe(validDescription);
+    expect(component.includeEnabled()).toBe(true);
+
+    description.setValue(`${validDescription} `);
+    fixture.detectChanges();
+    expect(description.hasError('maxlength')).toBe(true);
+    expect(description.value).toBe(`${validDescription} `);
+    expect(component.fieldError('descricao')).toContain('50 caracteres');
+    expect(host.querySelector('#descricao-error')?.textContent).toContain('50 caracteres');
+    expect(buttonByText(host, 'Incluir')?.disabled).toBe(true);
+    component.includeMovement();
+    httpTesting.expectNone((request) => request.method === 'POST');
+
+    description.setValue(validDescription);
+    fixture.detectChanges();
+    buttonByText(host, 'Incluir')?.click();
+    fixture.detectChanges();
+    const post = expectIncludeRequest();
+    expect(post.request.body.descricao).toBe(validDescription);
+    expect(post.request.body.valor).toBe('150.00');
+    post.flush(movement(2), { status: 201, statusText: 'Created' });
+    expectPageRequest(0).flush(pageResponse(0, 1, 1, 1));
+    fixture.detectChanges();
+    expect(component.formMode()).toBe('view');
+  });
+
+  it('formats monetary text without grouping and preserves precision in the POST payload', () => {
+    const fixture = createLoadedFixture();
+    startInclusion(fixture);
+    const component = fixture.componentInstance;
+    const host = fixture.nativeElement as HTMLElement;
+    component.movementForm.controls.codigoProduto.setValue('0001');
+    expectCosifRequest('0001').flush(cosifs());
+    fixture.detectChanges();
+    component.movementForm.patchValue({
+      mes: '12',
+      ano: '2026',
+      codigoCosif: '10000000001',
+      valor: '1234.56',
+      descricao: 'Ajuste',
+    });
+
+    const valueInput = host.querySelector<HTMLInputElement>('#valor');
+    valueInput?.dispatchEvent(new Event('blur'));
+    fixture.detectChanges();
+    expect(valueInput?.value).toBe('1234,56');
+    expect(valueInput?.value).not.toContain('.');
+
+    component.movementForm.controls.valor.setValue('1.234');
+    component.movementForm.controls.valor.markAsTouched();
+    valueInput?.dispatchEvent(new Event('blur'));
+    fixture.detectChanges();
+    expect(valueInput?.value).toBe('1.234');
+    expect(component.fieldError('valor')).toContain('valor decimal');
+    expect(component.includeEnabled()).toBe(false);
+    expect(buttonByText(host, 'Incluir')?.disabled).toBe(true);
+    component.includeMovement();
+    httpTesting.expectNone((request) => request.method === 'POST');
+
+    component.movementForm.controls.valor.setValue('9999999999999999,99');
+    fixture.detectChanges();
+    expect(component.includeEnabled()).toBe(true);
+    buttonByText(host, 'Incluir')?.click();
+    fixture.detectChanges();
+    const post = expectIncludeRequest();
+    expect(post.request.body.valor).toBe('9999999999999999.99');
+    post.flush(movement(3), { status: 201, statusText: 'Created' });
+    expectPageRequest(0).flush(pageResponse(0, 1, 1, 1));
+    fixture.detectChanges();
+    expect(component.formMode()).toBe('view');
+  });
+
+  it('rejects an unselected or unmatched COSIF without sending an inclusion', () => {
+    const fixture = createLoadedFixture();
+    startInclusion(fixture);
+    const component = fixture.componentInstance;
+    const host = fixture.nativeElement as HTMLElement;
+    component.movementForm.patchValue({
+      mes: '1',
+      ano: '2026',
+      valor: '150,00',
+      descricao: 'Ajuste',
+    });
+    component.movementForm.controls.codigoProduto.setValue('0001');
+    expectCosifRequest('0001').flush(cosifs());
+    fixture.detectChanges();
+
+    expect(component.movementForm.controls.codigoCosif.value).toBeNull();
+    expect(component.includeEnabled()).toBe(false);
+    expect(buttonByText(host, 'Incluir')?.disabled).toBe(true);
+    component.includeMovement();
+    httpTesting.expectNone((request) => request.method === 'POST');
+
+    component.movementForm.controls.codigoCosif.setValue('99999999999');
+    fixture.detectChanges();
+    expect(component.movementForm.controls.codigoCosif.valid).toBe(true);
+    expect(component.includeEnabled()).toBe(false);
+    expect(buttonByText(host, 'Incluir')?.disabled).toBe(true);
+    component.includeMovement();
+    httpTesting.expectNone((request) => request.method === 'POST');
+
+    component.movementForm.controls.codigoCosif.setValue('10000000001');
+    fixture.detectChanges();
+    expect(component.includeEnabled()).toBe(true);
   });
 
   it('blocks the form and actions while posting, then resets and retries only the first-page GET', () => {
@@ -674,8 +918,17 @@ describe('ManualMovementsPageComponent', () => {
     expect(component.fieldError('descricao')).toBe('Revise a descrição.');
     expect(fixture.nativeElement.textContent).toContain('O lançamento não pôde ser persistido.');
     expect(fixture.nativeElement.textContent).toContain('Revise a descrição.');
+    expect(buttonByText(fixture.nativeElement as HTMLElement, 'Novo')?.disabled).toBe(true);
+    expect(buttonByText(fixture.nativeElement as HTMLElement, 'Limpar')?.disabled).toBe(false);
+    expect(buttonByText(fixture.nativeElement as HTMLElement, 'Incluir')?.disabled).toBe(false);
     httpTesting.expectNone((request) => request.method === 'POST');
 
+    component.movementForm.controls.valor.setValue('0,00');
+    fixture.detectChanges();
+    expect(component.includeEnabled()).toBe(false);
+    expect(buttonByText(fixture.nativeElement as HTMLElement, 'Incluir')?.disabled).toBe(true);
+
+    component.movementForm.controls.valor.setValue('-150,00');
     component.movementForm.controls.descricao.setValue('Ajuste corrigido');
     fixture.detectChanges();
     expect(component.fieldError('descricao')).toBeNull();

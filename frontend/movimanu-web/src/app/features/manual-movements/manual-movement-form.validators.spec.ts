@@ -63,6 +63,8 @@ describe('manual movement form validators', () => {
       '150.50',
       '-150,00',
       '1234,56',
+      '1,23',
+      '1.23',
       '9999999999999999,99',
     ]) {
       value.setValue(accepted);
@@ -71,8 +73,12 @@ describe('manual movement form validators', () => {
 
     for (const rejected of [
       '0',
+      '000',
+      '0.00',
       '0,00',
+      '-0.0',
       '-0,00',
+      '-000,00',
       '1.234',
       '1,234',
       '1.234,56',
@@ -94,11 +100,14 @@ describe('manual movement form validators', () => {
     expect(toApiMonetaryText('150,5')).toBe('150.50');
     expect(toApiMonetaryText('150.50')).toBe('150.50');
     expect(toApiMonetaryText('-150,00')).toBe('-150.00');
+    expect(toApiMonetaryText('1,23')).toBe(toApiMonetaryText('1.23'));
+    expect(toApiMonetaryText('1.23')).toBe('1.23');
     expect(toApiMonetaryText('9999999999999999,99')).toBe('9999999999999999.99');
     expect(toApiMonetaryText('1,234')).toBeNull();
 
     expect(formatMonetaryTextForDisplay('150')).toBe('150,00');
     expect(formatMonetaryTextForDisplay('150.5')).toBe('150,50');
+    expect(formatMonetaryTextForDisplay('1234.56')).toBe('1234,56');
     expect(formatMonetaryTextForDisplay('9999999999999999,99')).toBe(
       '9999999999999999,99',
     );
