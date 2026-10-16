@@ -13,7 +13,7 @@ Os vínculos RF, RN e CA remetem a `specs/001-movimentos-manuais/spec.md`; os in
 - [x] **T001 — Inicializar o backend.** Criar a aplicação Spring Boot e habilitar o JAR executável. Ajustar os perfis local e de testes conforme o plano; configurar Surefire para `*Test` e Failsafe para `*IT`, sem sobreposição. Separar os dados JaCoCo dos grupos e gerar relatórios unitário, de integração e consolidado, conforme os caminhos do plano. Verificar 100% de linhas no consolidado em `verify`, preservando as exclusões existentes.
 
   **Base técnica:** `AGENTS.md`, `constitution.md` e `specs/001-movimentos-manuais/plan.md`, seções 1, 6 e 7.
-- [ ] **T002 — Inicializar o frontend.** Criar o workspace Angular nas pastas existentes, com as tecnologias definidas no plano e lockfile. Configurar componentes standalone, Reactive Forms, HttpClient, URL da API por ambiente, proxy local e execução dos testes.
+- [x] **T002 — Inicializar o frontend.** Criar o workspace Angular nas pastas existentes, com as tecnologias definidas no plano e lockfile. Configurar componentes standalone, Reactive Forms, HttpClient, URL da API por ambiente, proxy local e execução dos testes.
 
   **Base técnica:** `AGENTS.md`, `constitution.md` e `specs/001-movimentos-manuais/plan.md`, seções 1, 2, 5 e 7.
 

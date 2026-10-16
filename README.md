@@ -2,7 +2,7 @@
 
 Base do sistema de Movimentos Manuais, preparada para uma API REST em Java 21 com Spring Boot, Spring Cloud, DDD e persistência H2, além de um frontend Angular.
 
-O backend já possui inicialização Spring Boot, JAR executável, perfis local e de testes e execução separada de testes unitários e de integração. As funcionalidades de consulta e inclusão de movimentos e o workspace Angular permanecem pendentes.
+O backend já possui inicialização Spring Boot, JAR executável, perfis local e de testes e execução separada de testes unitários e de integração. O workspace Angular está inicializado com componentes standalone, Reactive Forms, HttpClient, ambientes, proxy local e testes iniciais. As funcionalidades de consulta e inclusão de movimentos permanecem pendentes.
 
 ## Estrutura
 
@@ -28,20 +28,35 @@ O backend já possui inicialização Spring Boot, JAR executável, perfis local 
 |               `-- integration/
 `-- frontend/
     `-- movimanu-web/
-        `-- src/app/
-            |-- core/
-            |-- shared/
-            `-- features/manual-movements/
+        |-- angular.json
+        |-- package.json
+        |-- package-lock.json
+        |-- proxy.conf.json
+        |-- public/
+        `-- src/
+            |-- main.ts
+            |-- app/
+            |   |-- app.config.ts
+            |   |-- app.ts
+            |   |-- app.spec.ts
+            |   |-- core/
+            |   |-- shared/
+            |   `-- features/manual-movements/
+            `-- environments/
+                |-- environment.ts
+                `-- environment.production.ts
 ```
 
 O serviço de movimentos manuais representa o primeiro bounded context. A organização interna separa domínio, aplicação, adaptadores de infraestrutura e interface REST. Novos microsserviços devem ser adicionados como módulos irmãos em `backend`.
 
 ## Pré-requisitos
 
-- Java 21
+- Java 21.
 - Nenhuma instalação global de Maven é necessária; o Maven Wrapper usa Maven 3.9.16.
+- Node.js 24.x, no mínimo 24.15.0, e npm 11.19.0, conforme `engines` e `packageManager` do frontend.
+- Os scripts npm utilizam o Angular CLI instalado no workspace; não é necessária instalação global do CLI.
 
-## Comandos
+## Comandos do backend
 
 No PowerShell, a partir da raiz, execute os testes unitários:
 
@@ -91,6 +106,63 @@ Os caminhos abaixo são relativos a `backend/movimento-manual-service`:
 Os relatórios JaCoCo foram gerados e a verificação do limite de 100% de linhas passou, mas foram avaliadas **zero classes e zero linhas**. A única classe de produção existente, `MovimanuApplication`, está abrangida pela exclusão preexistente `*Application`. Portanto, ainda não há classes elegíveis para medir cobertura funcional; esse resultado não comprova cobertura funcional de 100%. A exigência de 100% no consolidado e as exclusões existentes permanecem mantidas para a evolução do backend.
 
 Durante a execução reportada, o Flyway avisou que a versão resolvida do H2 era mais nova que a versão com a qual havia sido verificado. A migração e os testes passaram, mantendo-se as versões gerenciadas pelo projeto.
+
+## Frontend Angular
+
+O workspace fica em `frontend/movimanu-web`. As dependências diretas estão fixadas em `package.json`, com resolução registrada em `package-lock.json`.
+
+| Tecnologia | Versão utilizada na validação |
+| --- | --- |
+| Node.js | 24.21.0 |
+| npm | 11.19.0 |
+| Angular e Angular CLI | 22.2.3 |
+| TypeScript | 6.0.3 |
+| RxJS | 7.8.2 |
+| Vitest | 4.1.12 |
+
+### Preparação e comandos
+
+Em uma cópia nova, a partir da raiz do repositório, entre no workspace, confira as ferramentas selecionadas pelo terminal e instale as dependências pelo lockfile:
+
+```powershell
+Set-Location .\frontend\movimanu-web
+node --version
+npm --version
+npm ci
+```
+
+No Windows, `where.exe node` e `where.exe npm` permitem conferir os caminhos encontrados. O terminal do VSCode/Codex deve resolver as versões previstas para o projeto.
+
+Execute os testes sem observação e o build de produção:
+
+```powershell
+npm test
+npm run build
+```
+
+O script `test` já contém `--watch=false`; `npm run build` usa a configuração `production` definida como padrão em `angular.json`.
+
+Para iniciar o servidor de desenvolvimento:
+
+```powershell
+npm start
+```
+
+A aplicação é servida em `http://localhost:4200`. O proxy configurado em `proxy.conf.json` e associado ao alvo `serve` encaminha `/api/v1/**` para `http://localhost:8080`. Inicie o backend separadamente para usar esse encaminhamento.
+
+### Ambientes e validação inicial
+
+`src/environments/environment.ts` e `src/environments/environment.production.ts` definem `apiBaseUrl: '/api/v1'`. O build de produção substitui o arquivo de desenvolvimento pelo de produção. O proxy local se aplica ao servidor de desenvolvimento.
+
+Na execução técnica reportada, `npm test` passou com **um arquivo e dois testes**, `npm run build` passou e o servidor de desenvolvimento iniciou com o proxy configurado, sendo encerrado após a conferência. Node.js 24.21.0 e npm 11.19.0 também foram confirmados em terminal após o ajuste de prioridade do PATH.
+
+Os testes de `src/app/app.spec.ts` verificam a criação do componente inicial e a renderização do título. A execução usa o alvo `@angular/build:unit-test`, com Vitest. Esses testes validam a base inicial; os comportamentos de consulta e inclusão ainda serão implementados e testados.
+
+O diretório de saída esperado é `dist/movimanu-web/`, relativo ao workspace, com os arquivos de navegador em `browser/`. A partir da raiz do repositório, isso corresponde a `frontend/movimanu-web/dist/movimanu-web/browser/`. `angular.json` usa `@angular/build:application` sem sobrescrever `outputPath`; a localização efetivamente gerada deve ser conferida no resumo do build. Os diretórios `dist/`, `node_modules/` e `.angular/cache/` são ignorados pelo Git.
+
+Os resultados acima registram a execução técnica informada e a configuração publicada, sem nova execução de testes ou build nesta atualização documental. Não foi informado caminho de relatório de testes do frontend salvo em arquivo.
+
+Referências técnicas: [configuração do workspace Angular](https://angular.dev/reference/configs/workspace-config), [build](https://angular.dev/cli/build) e [proxy de desenvolvimento](https://angular.dev/tools/cli/serve).
 
 ## Publicação em repositório Maven
 
