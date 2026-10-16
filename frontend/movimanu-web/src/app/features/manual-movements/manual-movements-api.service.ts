@@ -4,7 +4,9 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
   CosifResponse,
+  IncludeMovementRequest,
   ManualMovementPageResponse,
+  ManualMovementResponse,
   ProductResponse,
 } from './manual-movements.models';
 
@@ -16,6 +18,10 @@ export class ManualMovementsApiService {
   listPage(page: number): Observable<ManualMovementPageResponse> {
     const params = new HttpParams().set('page', page);
     return this.http.get<ManualMovementPageResponse>(this.movementsUrl, { params });
+  }
+
+  createMovement(request: IncludeMovementRequest): Observable<ManualMovementResponse> {
+    return this.http.post<ManualMovementResponse>(this.movementsUrl, request);
   }
 
   listProducts(): Observable<ProductResponse[]> {

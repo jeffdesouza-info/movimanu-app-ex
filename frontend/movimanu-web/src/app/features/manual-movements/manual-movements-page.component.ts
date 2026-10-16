@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, computed, inject, output, signal } from '@angular/core';
+import { Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { catchError, distinctUntilChanged, map, of, startWith, Subject, switchMap, tap } from 'rxjs';
@@ -20,7 +20,7 @@ import {
 } from './manual-movement-form.validators';
 
 type QueryState = 'loading' | 'loaded' | 'error';
-type FormMode = 'view' | 'including';
+type FormMode = 'view' | 'including' | 'sending';
 type LookupState = 'idle' | 'loading' | 'loaded' | 'error';
 type FormField = 'mes' | 'ano' | 'codigoProduto' | 'codigoCosif' | 'valor' | 'descricao';
 
@@ -44,12 +44,12 @@ type CosifQueryResult =
   templateUrl: './manual-movements-page.component.html',
 })
 export class ManualMovementsPageComponent {
+  private readonly destroyRef = inject(DestroyRef);
   private readonly movementsApi = inject(ManualMovementsApiService);
   private readonly pageRequests = new Subject<number>();
   private readonly productRequests = new Subject<void>();
   private readonly cosifRequests = new Subject<string | null>();
 
-  readonly includeRequested = output<IncludeMovementRequest>();
   readonly queryState = signal<QueryState>('loading');
   readonly pageData = signal<ManualMovementPageResponse | null>(null);
   readonly requestedPage = signal(0);
@@ -62,6 +62,8 @@ export class ManualMovementsPageComponent {
   readonly cosifs = signal<CosifResponse[]>([]);
   readonly cosifErrorMessage = signal<string | null>(null);
   readonly includeEnabled = signal(false);
+  readonly includeErrorMessage = signal<string | null>(null);
+  readonly submissionFieldErrors = signal<Partial<Record<FormField, string>>>({});
 
   readonly movementForm = new FormGroup({
     mes: new FormControl(
@@ -232,6 +234,8 @@ export class ManualMovementsPageComponent {
       });
 
     this.movementForm.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => {
+      this.submissionFieldErrors.set({});
+      this.includeErrorMessage.set(null);
       this.updateIncludeEnabled();
     });
 
@@ -246,6 +250,8 @@ export class ManualMovementsPageComponent {
     }
 
     this.formMode.set('including');
+    this.includeErrorMessage.set(null);
+    this.submissionFieldErrors.set({});
     this.movementForm.enable({ emitEvent: false });
     this.movementForm.controls.codigoCosif.disable({ emitEvent: false });
     this.cosifs.set([]);
@@ -261,6 +267,8 @@ export class ManualMovementsPageComponent {
     }
 
     this.cosifRequests.next(null);
+    this.includeErrorMessage.set(null);
+    this.submissionFieldErrors.set({});
     this.movementForm.reset(
       {
         mes: '',
@@ -299,15 +307,36 @@ export class ManualMovementsPageComponent {
   }
 
   includeMovement(): void {
+    if (this.formMode() !== 'including') {
+      return;
+    }
+
     if (!this.includeEnabled()) {
       this.movementForm.markAllAsTouched();
       return;
     }
 
     const request = this.createIncludeRequest();
-    if (request) {
-      this.includeRequested.emit(request);
+    if (!request) {
+      return;
     }
+
+    this.includeErrorMessage.set(null);
+    this.submissionFieldErrors.set({});
+    this.formMode.set('sending');
+    this.includeEnabled.set(false);
+    this.movementForm.disable({ emitEvent: false });
+
+    this.movementsApi
+      .createMovement(request)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.resetAfterSuccessfulInclusion();
+          this.pageRequests.next(0);
+        },
+        error: (error: unknown) => this.restoreAfterInclusionFailure(error),
+      });
   }
 
   createIncludeRequest(): IncludeMovementRequest | null {
@@ -340,7 +369,16 @@ export class ManualMovementsPageComponent {
 
   fieldError(field: FormField): string | null {
     const control = this.movementForm.controls[field];
-    if (control.disabled || control.valid || (!control.touched && !control.dirty)) {
+    if (control.disabled) {
+      return null;
+    }
+
+    const submissionError = this.submissionFieldErrors()[field];
+    if (submissionError) {
+      return submissionError;
+    }
+
+    if (control.valid || (!control.touched && !control.dirty)) {
       return null;
     }
 
@@ -457,6 +495,91 @@ export class ManualMovementsPageComponent {
         !!codigoCosif &&
         this.cosifs().some((cosif) => cosif.codigoCosif === codigoCosif),
     );
+  }
+
+  private resetAfterSuccessfulInclusion(): void {
+    this.cosifRequests.next(null);
+    this.movementForm.reset(
+      {
+        mes: '',
+        ano: '',
+        codigoProduto: null,
+        codigoCosif: null,
+        valor: '',
+        descricao: '',
+      },
+      { emitEvent: false },
+    );
+    this.movementForm.controls.codigoProduto.setValue(null, { emitEvent: true });
+    this.movementForm.disable({ emitEvent: false });
+    this.formMode.set('view');
+    this.cosifs.set([]);
+    this.cosifsState.set('idle');
+    this.cosifErrorMessage.set(null);
+    this.includeErrorMessage.set(null);
+    this.submissionFieldErrors.set({});
+    this.updateIncludeEnabled();
+  }
+
+  private restoreAfterInclusionFailure(error: unknown): void {
+    this.formMode.set('including');
+    this.movementForm.enable({ emitEvent: false });
+    if (this.cosifsState() !== 'loaded') {
+      this.movementForm.controls.codigoCosif.disable({ emitEvent: false });
+    }
+
+    const problem = this.getSubmissionProblem(error);
+    this.submissionFieldErrors.set(problem.fieldErrors);
+    this.includeErrorMessage.set(problem.detail);
+    this.updateIncludeEnabled();
+  }
+
+  private getSubmissionProblem(error: unknown): {
+    detail: string;
+    fieldErrors: Partial<Record<FormField, string>>;
+  } {
+    const body =
+      error instanceof HttpErrorResponse &&
+      typeof error.error === 'object' &&
+      error.error !== null
+        ? (error.error as { detail?: unknown; errors?: unknown })
+        : null;
+    const fieldErrors: Partial<Record<FormField, string>> = {};
+    const knownFields: FormField[] = [
+      'mes',
+      'ano',
+      'codigoProduto',
+      'codigoCosif',
+      'valor',
+      'descricao',
+    ];
+
+    if (Array.isArray(body?.errors)) {
+      for (const item of body.errors) {
+        if (typeof item !== 'object' || item === null) {
+          continue;
+        }
+
+        const field = (item as { field?: unknown }).field;
+        const message = (item as { message?: unknown }).message;
+        if (
+          typeof field === 'string' &&
+          knownFields.includes(field as FormField) &&
+          typeof message === 'string' &&
+          message.length > 0
+        ) {
+          fieldErrors[field as FormField] = message;
+        }
+      }
+    }
+
+    return {
+      detail:
+        typeof body?.detail === 'string' && body.detail.trim().length > 0
+          ? body.detail
+          : 'Não foi possível incluir o movimento. Revise os dados e tente novamente.',
+      fieldErrors,
+    };
   }
 
   private getErrorMessage(error: unknown): string {

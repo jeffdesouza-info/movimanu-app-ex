@@ -137,6 +137,10 @@ main {
   justify-content: flex-end;
 }
 
+.form-feedback {
+  flex: 1;
+}
+
 .button,
 .page-button {
   min-height: 34px;

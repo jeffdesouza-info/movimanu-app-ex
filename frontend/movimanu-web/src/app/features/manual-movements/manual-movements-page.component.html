@@ -158,6 +158,12 @@
         </label>
 
         <div class="form-actions" aria-label="Ações do movimento">
+          @if (includeErrorMessage(); as error) {
+            <span class="form-feedback error-cell" role="alert">{{ error }}</span>
+          }
+          @if (formMode() === 'sending') {
+            <span class="form-feedback" role="status">Incluindo movimento...</span>
+          }
           <button
             class="button button-secondary"
             type="button"
@@ -169,13 +175,17 @@
           <button
             class="button button-secondary"
             type="button"
-            [disabled]="formMode() === 'including'"
+            [disabled]="formMode() !== 'view'"
             (click)="startNew()"
           >
             Novo
           </button>
-          <button class="button button-primary" type="submit" [disabled]="!includeEnabled()">
-            Incluir
+          <button
+            class="button button-primary"
+            type="submit"
+            [disabled]="formMode() !== 'including' || !includeEnabled()"
+          >
+            {{ formMode() === 'sending' ? 'Incluindo...' : 'Incluir' }}
           </button>
         </div>
       </form>
