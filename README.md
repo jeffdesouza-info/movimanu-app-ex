@@ -2,7 +2,7 @@
 
 Sistema de Movimentos Manuais com API REST em Java 21, Spring Boot, Spring Cloud, DDD e persistência H2, além de um frontend Angular em desenvolvimento.
 
-O backend já possui inicialização Spring Boot, JAR executável, perfis local e de testes, modelos de domínio, persistência JPA, casos de uso de consulta e inclusão concorrente e os quatro endpoints REST, com validações e erros em `ProblemDetail`. Os testes unitários e de integração têm execução separada. O workspace Angular está inicializado com componentes standalone, Reactive Forms, HttpClient, ambientes, proxy local e testes iniciais. Permanecem pendentes a validação integrada consolidada do backend, os comportamentos funcionais da interface e a validação final da aplicação.
+O backend já possui inicialização Spring Boot, JAR executável, perfis local e de testes, modelos de domínio, persistência JPA, casos de uso de consulta e inclusão concorrente e os quatro endpoints REST, com validações e erros em `ProblemDetail`. A validação integrada do backend está concluída, com execução separada de testes unitários e de integração. O workspace Angular está inicializado com componentes standalone, Reactive Forms, HttpClient, ambientes, proxy local e testes iniciais. Os comportamentos funcionais da interface e a validação final da aplicação permanecem pendentes.
 
 ## Estrutura
 
@@ -155,12 +155,14 @@ Em Linux/macOS, use `./mvnw test`, `./mvnw clean verify` e barras `/` no caminho
 
 ## Validação do backend
 
-Na validação final da T007, o Codex reportou sucesso em `.\mvnw.cmd clean verify` com a JVM em `America/Sao_Paulo`, com os resultados abaixo. O teste unitário focado do desserializador teve 12 execuções aprovadas, já incluídas no total unitário. Esta atualização documental se baseia no relato de execução e na revisão estática do código fornecido; os XMLs desta etapa não foram fornecidos e testes e build não foram executados novamente aqui.
+Na validação final da T008, o Codex reportou sucesso em `.\mvnw.cmd test` e `.\mvnw.cmd clean verify`. Os XMLs Surefire/Failsafe fornecidos foram conferidos e confirmam os resultados abaixo, sem sobreposição entre os grupos. Os relatórios de integração registram a JVM em `America/Sao_Paulo`. Testes e build não foram executados novamente nesta atualização documental.
 
-| Grupo | Executados | Falhas | Erros | Ignorados |
-| --- | --- | --- | --- | --- |
-| Unitários — Surefire (`*Test`) | 119 | 0 | 0 | 0 |
-| Integração — Failsafe (`*IT`) | 65 | 0 | 0 | 0 |
+| Grupo | Suítes | Executados | Falhas | Erros | Ignorados |
+| --- | --- | --- | --- | --- | --- |
+| Unitários — Surefire (`*Test`) | 26 | 119 | 0 | 0 | 0 |
+| Integração — Failsafe (`*IT`) | 6 | 74 | 0 | 0 | 0 |
+
+O resumo Failsafe confirma 74 execuções concluídas, sem falhas, erros, ignorados, instabilidades ou timeout. Os logs registram a validação das duas migrações Flyway e sua aplicação nos bancos inicializados durante os testes.
 
 Os testes unitários verificam modelos, validações, projeção, paginação, identificadores JPA, mapeadores, conversor temporal, casos de uso e adaptadores de consulta e inclusão, além da declaração do ponto de entrada Spring Boot. Na inclusão, cobrem primeiro lançamento, continuidade após o máximo, vínculo inválido, limite numérico, repetição restrita a colisões, esgotamento das três tentativas e propagação de outros erros. O teste do adaptador verifica a ordem `persist`/`flush` e a ausência de chamada a `merge`.
 
@@ -168,7 +170,11 @@ A interface REST possui testes unitários próprios em `src/test/java/com/antlia
 
 Os testes de integração verificam o esquema migrado, os relacionamentos persistidos, a conversão temporal, a restrição única entre produtos diferentes, a carga demonstrativa local e as consultas. `src/test/java/com/antlia/movimanu/integration/JpaQueryAdaptersIT.java`, relativo ao módulo backend, cobre produto sem COSIFs versus inexistente, coleções vazias, projeção, ordenação, páginas normais e além dos resultados, páginas com deslocamento alto e maior lançamento por período. Também verifica que o literal SQL `2026-01-01 12:00:00` é lido como `2026-01-01T12:00:00Z` na entidade e na projeção.
 
-`src/test/java/com/antlia/movimanu/integration/ManualMovementRestIT.java` cobre os quatro endpoints, DTOs, paginação, respostas de erro, precisão decimal, dados automáticos e preservação dos espaços de descrições válidas. As rejeições incluem ausência de dados, tipos incompatíveis, propriedades desconhecidas, descrição inválida e formatos monetários inválidos. Os quatro casos de estouro de `int` em mês/ano verificam HTTP `400`, campo correto e ausência de persistência. A leitura REST da data também espera `2026-01-01T12:00:00Z` para o mesmo literal SQL.
+`src/test/java/com/antlia/movimanu/integration/ManualMovementRestIT.java` possui 56 execuções e cobre os quatro endpoints, campos e tipos exatos dos DTOs, paginação, respostas de erro, precisão decimal, dados automáticos e preservação dos espaços de descrições válidas. Verifica descrição com exatamente 50 caracteres na resposta e no banco, formatos aceitos de valor inteiro ou com uma ou duas casas, sinal negativo e precisão até o limite de `NUMERIC(18,2)`. Com sete movimentos, as páginas `357913942` e `Integer.MAX_VALUE` retornam conteúdo vazio e preservam a página solicitada e os totais reais.
+
+As rejeições REST incluem ausência de dados, tipos incompatíveis, propriedades desconhecidas, descrição inválida e formatos monetários inválidos, incluindo texto vazio e sinal positivo explícito. Os quatro casos de estouro de `int` em mês/ano verificam HTTP `400`, campo correto e ausência de persistência. As asserções de `ProblemDetail` verificam títulos em pt-BR, status, caminho sem query string e estrutura dos erros por campo. A leitura REST da data também espera `2026-01-01T12:00:00Z` para o mesmo literal SQL.
+
+O esgotamento das três tentativas é exercitado por colisões controladas na porta de inclusão, mantendo o caso de uso e a fronteira transacional reais. O teste exige HTTP `409`, exatamente três chamadas de inclusão e nenhuma alteração na quantidade de movimentos. Os testes JPA de colisão real, rollback e concorrência foram preservados.
 
 `src/test/java/com/antlia/movimanu/integration/JpaManualMovementInclusionIT.java` acrescenta oito testes de inclusão. Eles verificam numeração, lacunas, períodos distintos, vínculo inválido, limite de 18 dígitos, dados automáticos e concorrência entre produtos diferentes. Duas regressões determinísticas usam o mesmo produto/COSIF em períodos vazio e preenchido: ambas as operações leem o mesmo máximo, a segunda gravação aguarda o commit da primeira e as asserções conferem a colisão identificada, nova leitura, ausência de gravação adicional na tentativa rejeitada e preservação das descrições e valores nos dois lançamentos finais. O perfil de teste mantém o banco em memória sem a carga demonstrativa.
 
@@ -187,11 +193,19 @@ Os caminhos abaixo são relativos a `backend/movimento-manual-service`:
 | Relatórios de integração HTML e XML | `target/site/jacoco-integration/index.html` e `target/site/jacoco-integration/jacoco.xml` |
 | Relatórios consolidados HTML e XML | `target/site/jacoco/index.html` e `target/site/jacoco/jacoco.xml` |
 
-Na execução final da T007, o Codex informou **551/551 linhas elegíveis cobertas, zero descobertas e 100% no consolidado**, com aprovação da verificação configurada. Também informou a geração dos relatórios unitário e de integração nos caminhos acima, sem apresentar os percentuais separados desta execução. As exclusões de configuração e inicialização foram preservadas; a exigência de 100% de linhas aplica-se ao consolidado.
+Os XMLs JaCoCo fornecidos e conferidos apresentam a seguinte cobertura de linhas:
 
-Na rodada anterior de correção da T007, o Codex reportou `clean verify` aprovado com a JVM em `UTC` e em `America/Sao_Paulo`, incluindo as regressões temporais SQL/JPA/projeção/REST. A rodada final acrescentou os limites de `int` e corrigiu a hierarquia de `format_sql`, preservando a solução temporal. A cobertura atual abrange o código implementado até a T007; a validação integrada consolidada do backend, os comportamentos funcionais da interface e a validação final da aplicação permanecem nas tarefas seguintes.
+| Grupo | Linhas cobertas | Linhas descobertas | Cobertura |
+| --- | --- | --- | --- |
+| Unitários | 472/551 | 79 | 85,66% |
+| Integração | 489/551 | 62 | 88,75% |
+| Consolidado | **551/551** | **0** | **100%** |
 
-Na validação inicial do backend, o Flyway avisou que a versão resolvida do H2 era mais nova que a versão com a qual havia sido verificado. A migração e os testes passaram, mantendo-se as versões gerenciadas pelo projeto.
+O consolidado corresponde à união das linhas cobertas e das duas sessões registradas nos relatórios por grupo, com o mesmo conjunto de classes e as exclusões de configuração e inicialização. A exigência de 100% de linhas aplica-se ao consolidado; o Codex reportou aprovação da verificação configurada.
+
+Na validação temporal da T007, o Codex reportou `clean verify` aprovado com a JVM em `UTC` e em `America/Sao_Paulo`, incluindo as regressões SQL/JPA/projeção/REST. A T008 preservou o código de produção e complementou os testes REST existentes. A validação integrada do backend está concluída; os comportamentos funcionais da interface e a validação final da aplicação permanecem nas tarefas seguintes.
+
+Na execução atual, o Flyway avisou que o H2 `2.4.240` é mais recente que a versão verificada, `2.3.232`. A validação das migrações e os testes passaram, mantendo-se as versões gerenciadas pelo projeto.
 
 ## Frontend Angular
 
