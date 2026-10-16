@@ -32,5 +32,8 @@ class MovimanuApplicationIT {
                 "SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'PRODUTO'",
                 Integer.class);
         assertThat(productTableCount).isEqualTo(1);
+
+        Integer seededProductCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM PRODUTO", Integer.class);
+        assertThat(seededProductCount).isZero();
     }
 }

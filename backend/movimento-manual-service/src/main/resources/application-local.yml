@@ -10,6 +10,10 @@ spring:
     username: ${H2_USER:sa}
     password: ${H2_PASSWORD:}
     driver-class-name: org.h2.Driver
+  sql:
+    init:
+      mode: always
+      data-locations: classpath:db/local/demo-data.sql
   h2:
     console:
       enabled: true
