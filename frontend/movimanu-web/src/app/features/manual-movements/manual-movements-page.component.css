@@ -109,6 +109,13 @@ main {
   font-size: 13px;
 }
 
+.field input:enabled,
+.field select:enabled,
+.field textarea:enabled {
+  background: #fff;
+  color: #233746;
+}
+
 .field textarea {
   min-height: 66px;
   resize: vertical;
@@ -346,4 +353,3 @@ td {
     justify-content: space-between;
   }
 }
-

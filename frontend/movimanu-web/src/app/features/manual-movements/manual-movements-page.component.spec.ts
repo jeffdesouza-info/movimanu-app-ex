@@ -1,10 +1,13 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ManualMovementsPageComponent } from './manual-movements-page.component';
 import {
+  CosifResponse,
+  IncludeMovementRequest,
   ManualMovementPageResponse,
   ManualMovementResponse,
+  ProductResponse,
 } from './manual-movements.models';
 
 describe('ManualMovementsPageComponent', () => {
@@ -227,6 +230,253 @@ describe('ManualMovementsPageComponent', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Nenhum movimento encontrado.');
   });
+
+  it('starts with disabled fields and enables the form after Novo loads products', () => {
+    const fixture = createLoadedFixture();
+    const host = fixture.nativeElement as HTMLElement;
+
+    expect(
+      Array.from(host.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
+        '#mes, #ano, #codigoProduto, #codigoCosif, #valor, #descricao',
+      )).every((field) => field.disabled),
+    ).toBe(true);
+    expect(buttonByText(host, 'Novo')?.disabled).toBe(false);
+    expect(buttonByText(host, 'Limpar')?.disabled).toBe(true);
+    expect(buttonByText(host, 'Incluir')?.disabled).toBe(true);
+
+    buttonByText(host, 'Novo')?.click();
+    fixture.detectChanges();
+    expect(host.textContent).toContain('Carregando produtos...');
+    expectProductsRequest().flush(products());
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.formMode()).toBe('including');
+    expect(fixture.componentInstance.movementForm.controls.mes.enabled).toBe(true);
+    expect(fixture.componentInstance.movementForm.controls.ano.enabled).toBe(true);
+    expect(fixture.componentInstance.movementForm.controls.codigoProduto.enabled).toBe(true);
+    expect(fixture.componentInstance.movementForm.controls.codigoCosif.disabled).toBe(true);
+    expect(fixture.componentInstance.movementForm.controls.valor.enabled).toBe(true);
+    expect(fixture.componentInstance.movementForm.controls.descricao.enabled).toBe(true);
+    expect(host.querySelector('#codigoProduto')?.textContent).toContain('-- Selecione --');
+    expect(host.querySelector('#codigoProduto')?.textContent).toContain('Conta corrente');
+    expect(host.querySelector('#codigoCosif')?.textContent).toContain('-- Selecione --');
+  });
+
+  it('shows COSIF loading and error states, then retries only the current product GET', () => {
+    const fixture = createLoadedFixture();
+    startInclusion(fixture);
+    const component = fixture.componentInstance;
+    component.movementForm.patchValue({ mes: '12', ano: '2026', valor: '150,5', descricao: '  Ajuste  ' });
+    component.movementForm.controls.codigoProduto.setValue('0001');
+
+    const firstCosifRequest = expectCosifRequest('0001');
+    fixture.detectChanges();
+    expect(component.cosifsState()).toBe('loading');
+    expect(component.movementForm.controls.codigoCosif.disabled).toBe(true);
+    expect(fixture.nativeElement.textContent).toContain('Carregando COSIFs...');
+
+    firstCosifRequest.flush(
+      { detail: 'Falha temporária' },
+      { status: 503, statusText: 'Service Unavailable' },
+    );
+    fixture.detectChanges();
+    expect(component.cosifsState()).toBe('error');
+    expect(component.cosifs()).toEqual([]);
+    expect(component.movementForm.controls.codigoCosif.value).toBeNull();
+    expect(component.movementForm.controls.codigoCosif.disabled).toBe(true);
+    expect(fixture.nativeElement.textContent).toContain('Não foi possível carregar os COSIFs.');
+    expect(component.movementForm.getRawValue()).toMatchObject({
+      mes: '12',
+      ano: '2026',
+      codigoProduto: '0001',
+      valor: '150,5',
+      descricao: '  Ajuste  ',
+    });
+    expect(component.includeEnabled()).toBe(false);
+
+    buttonByText(fixture.nativeElement as HTMLElement, 'Tentar novamente')?.click();
+    fixture.detectChanges();
+    const retry = expectCosifRequest('0001');
+    httpTesting.expectNone((request) => request.method === 'POST');
+    retry.flush(cosifs());
+    fixture.detectChanges();
+
+    expect(component.cosifsState()).toBe('loaded');
+    expect(component.movementForm.controls.codigoCosif.enabled).toBe(true);
+    expect(component.movementForm.controls.codigoCosif.value).toBeNull();
+    expect(component.cosifs()).toEqual(cosifs());
+    expect(component.movementForm.controls.valor.value).toBe('150,5');
+    expect(component.movementForm.controls.descricao.value).toBe('  Ajuste  ');
+    expect(component.includeEnabled()).toBe(false);
+  });
+
+  it('discards COSIF responses from an earlier product selection', () => {
+    const fixture = createLoadedFixture();
+    startInclusion(fixture);
+    const component = fixture.componentInstance;
+
+    component.movementForm.controls.codigoProduto.setValue('0001');
+    const firstRequest = expectCosifRequest('0001');
+    component.movementForm.controls.codigoProduto.setValue('0002');
+    expect(firstRequest.cancelled).toBe(true);
+    const currentRequest = expectCosifRequest('0002');
+    currentRequest.flush([{ codigoCosif: '20000000002', codigoClassificacao: '654321' }]);
+    fixture.detectChanges();
+
+    expect(component.cosifs()).toEqual([
+      { codigoCosif: '20000000002', codigoClassificacao: '654321' },
+    ]);
+    expect(component.cosifsState()).toBe('loaded');
+    expect(component.movementForm.controls.codigoCosif.value).toBeNull();
+  });
+
+  it('clears fields and cancels a pending COSIF lookup without leaving inclusion mode', () => {
+    const fixture = createLoadedFixture();
+    startInclusion(fixture);
+    const component = fixture.componentInstance;
+    component.movementForm.patchValue({ mes: '3', ano: '2025', valor: '-150,00', descricao: 'Ajuste' });
+    component.movementForm.controls.codigoProduto.setValue('0001');
+    const pendingCosifRequest = expectCosifRequest('0001');
+
+    buttonByText(fixture.nativeElement as HTMLElement, 'Limpar')?.click();
+    fixture.detectChanges();
+
+    expect(pendingCosifRequest.cancelled).toBe(true);
+    expect(component.formMode()).toBe('including');
+    expect(component.movementForm.getRawValue()).toEqual({
+      mes: '',
+      ano: '',
+      codigoProduto: null,
+      codigoCosif: null,
+      valor: '',
+      descricao: '',
+    });
+    expect(component.movementForm.controls.mes.enabled).toBe(true);
+    expect(component.movementForm.controls.codigoProduto.enabled).toBe(true);
+    expect(component.movementForm.controls.codigoCosif.disabled).toBe(true);
+    expect(component.cosifs()).toEqual([]);
+    expect(component.cosifsState()).toBe('idle');
+    expect(component.includeEnabled()).toBe(false);
+  });
+
+  it('requests the same product again after clearing a completed COSIF lookup', () => {
+    const fixture = createLoadedFixture();
+    startInclusion(fixture);
+    const component = fixture.componentInstance;
+    component.movementForm.controls.codigoProduto.setValue('0001');
+    expectCosifRequest('0001').flush(cosifs());
+    fixture.detectChanges();
+
+    expect(component.cosifsState()).toBe('loaded');
+    expect(component.movementForm.controls.codigoCosif.enabled).toBe(true);
+    expect(component.movementForm.controls.codigoCosif.value).toBeNull();
+
+    buttonByText(fixture.nativeElement as HTMLElement, 'Limpar')?.click();
+    fixture.detectChanges();
+    component.movementForm.controls.codigoProduto.setValue('0001');
+
+    const repeatedRequest = expectCosifRequest('0001');
+    fixture.detectChanges();
+    expect(component.cosifsState()).toBe('loading');
+    expect(component.cosifs()).toEqual([]);
+    expect(component.movementForm.controls.codigoCosif.disabled).toBe(true);
+    expect(component.movementForm.controls.codigoCosif.value).toBeNull();
+
+    repeatedRequest.flush(cosifs());
+    fixture.detectChanges();
+    expect(component.cosifsState()).toBe('loaded');
+    expect(component.movementForm.controls.codigoCosif.enabled).toBe(true);
+    expect(component.movementForm.controls.codigoCosif.value).toBeNull();
+  });
+
+  it('cancels and repeats the same product lookup after clearing while it is pending', () => {
+    const fixture = createLoadedFixture();
+    startInclusion(fixture);
+    const component = fixture.componentInstance;
+    component.movementForm.controls.codigoProduto.setValue('0001');
+    const pendingRequest = expectCosifRequest('0001');
+    expect(component.cosifsState()).toBe('loading');
+    expect(component.movementForm.controls.codigoCosif.disabled).toBe(true);
+
+    buttonByText(fixture.nativeElement as HTMLElement, 'Limpar')?.click();
+    fixture.detectChanges();
+    expect(pendingRequest.cancelled).toBe(true);
+    component.movementForm.controls.codigoProduto.setValue('0001');
+
+    const repeatedRequest = expectCosifRequest('0001');
+    fixture.detectChanges();
+    expect(component.cosifsState()).toBe('loading');
+    expect(component.cosifs()).toEqual([]);
+    expect(component.movementForm.controls.codigoCosif.disabled).toBe(true);
+    expect(component.movementForm.controls.codigoCosif.value).toBeNull();
+
+    repeatedRequest.flush(cosifs());
+    fixture.detectChanges();
+    expect(component.cosifsState()).toBe('loaded');
+    expect(component.movementForm.controls.codigoCosif.enabled).toBe(true);
+    expect(component.movementForm.controls.codigoCosif.value).toBeNull();
+  });
+
+  it('validates fields, preserves invalid text, formats valid money, and emits the exact API draft', () => {
+    const fixture = createLoadedFixture();
+    startInclusion(fixture);
+    const component = fixture.componentInstance;
+    component.movementForm.controls.codigoProduto.setValue('0001');
+    expectCosifRequest('0001').flush(cosifs());
+    fixture.detectChanges();
+
+    component.movementForm.patchValue({
+      mes: '12',
+      ano: '2026',
+      codigoCosif: '10000000001',
+      valor: '-150,00',
+      descricao: '  Ajuste manual  ',
+    });
+    component.formatValueOnBlur();
+    expect(component.movementForm.controls.valor.value).toBe('-150,00');
+    expect(component.includeEnabled()).toBe(true);
+    fixture.detectChanges();
+
+    let emitted: IncludeMovementRequest | undefined;
+    component.includeRequested.subscribe((request) => (emitted = request));
+    buttonByText(fixture.nativeElement as HTMLElement, 'Incluir')?.click();
+    fixture.detectChanges();
+
+    expect(emitted).toEqual({
+      mes: 12,
+      ano: 2026,
+      codigoProduto: '0001',
+      codigoCosif: '10000000001',
+      descricao: '  Ajuste manual  ',
+      valor: '-150.00',
+    });
+    httpTesting.expectNone((request) => request.method === 'POST');
+
+    component.movementForm.controls.valor.setValue('1,234');
+    component.movementForm.controls.valor.markAsTouched();
+    component.formatValueOnBlur();
+    fixture.detectChanges();
+    expect(component.movementForm.controls.valor.value).toBe('1,234');
+    expect(component.fieldError('valor')).toContain('valor decimal');
+    expect(fixture.nativeElement.textContent).toContain('valor decimal');
+    expect(component.includeEnabled()).toBe(false);
+
+    component.movementForm.controls.descricao.setValue('   ');
+    component.movementForm.controls.descricao.markAsTouched();
+    fixture.detectChanges();
+    expect(component.fieldError('descricao')).toContain('caractere diferente de espaço');
+    expect(fixture.nativeElement.textContent).toContain(
+      'caractere diferente de espaço',
+    );
+    expect(component.movementForm.controls.descricao.value).toBe('   ');
+    expect(component.includeEnabled()).toBe(false);
+
+    component.movementForm.controls.descricao.setValue(`${'x'.repeat(50)} `);
+    component.movementForm.controls.valor.setValue('9999999999999999,99');
+    fixture.detectChanges();
+    expect(component.movementForm.controls.descricao.hasError('maxlength')).toBe(true);
+    expect(component.includeEnabled()).toBe(false);
+  });
 });
 
 function expectPageRequest(page: number) {
@@ -236,6 +486,60 @@ function expectPageRequest(page: number) {
       request.url === '/api/v1/movimentos-manuais' &&
       request.params.get('page') === String(page),
   );
+}
+
+function expectProductsRequest() {
+  return TestBed.inject(HttpTestingController).expectOne(
+    (request) => request.method === 'GET' && request.url === '/api/v1/produtos',
+  );
+}
+
+function expectCosifRequest(codigoProduto: string) {
+  return TestBed.inject(HttpTestingController).expectOne(
+    (request) =>
+      request.method === 'GET' &&
+      request.url === `/api/v1/produtos/${codigoProduto}/cosifs`,
+  );
+}
+
+function createLoadedFixture(): ComponentFixture<ManualMovementsPageComponent> {
+  const fixture = TestBed.createComponent(ManualMovementsPageComponent);
+  fixture.detectChanges();
+  expectPageRequest(0).flush({
+    content: [],
+    page: 0,
+    size: 6,
+    totalElements: 0,
+    totalPages: 0,
+  });
+  fixture.detectChanges();
+  return fixture;
+}
+
+function startInclusion(fixture: ComponentFixture<ManualMovementsPageComponent>): void {
+  buttonByText(fixture.nativeElement as HTMLElement, 'Novo')?.click();
+  fixture.detectChanges();
+  expectProductsRequest().flush(products());
+  fixture.detectChanges();
+}
+
+function buttonByText(host: HTMLElement, text: string): HTMLButtonElement | null {
+  return (
+    Array.from(host.querySelectorAll<HTMLButtonElement>('button')).find(
+      (button) => button.textContent?.trim() === text,
+    ) ?? null
+  );
+}
+
+function products(): ProductResponse[] {
+  return [
+    { codigoProduto: '0001', descricaoProduto: 'Conta corrente' },
+    { codigoProduto: '0002', descricaoProduto: 'Poupança' },
+  ];
+}
+
+function cosifs(): CosifResponse[] {
+  return [{ codigoCosif: '10000000001', codigoClassificacao: '123456' }];
 }
 
 function pageResponse(

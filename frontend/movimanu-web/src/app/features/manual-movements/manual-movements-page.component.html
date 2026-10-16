@@ -18,42 +18,167 @@
         </div>
       </div>
 
-      <div class="form-grid" aria-label="Campos e ações do movimento">
-        <label class="field">
+      <form
+        class="form-grid"
+        aria-label="Campos e ações do movimento"
+        [formGroup]="movementForm"
+        (ngSubmit)="includeMovement()"
+      >
+        <label class="field" for="mes">
           <span>Mês</span>
-          <input type="text" inputmode="numeric" disabled />
+          <input
+            id="mes"
+            type="text"
+            inputmode="numeric"
+            maxlength="2"
+            autocomplete="off"
+            formControlName="mes"
+            [attr.aria-invalid]="fieldError('mes') ? 'true' : null"
+            [attr.aria-describedby]="fieldError('mes') ? 'mes-error' : null"
+          />
+          @if (fieldError('mes'); as error) {
+            <small class="field-error error-cell" id="mes-error">{{ error }}</small>
+          }
         </label>
-        <label class="field">
+
+        <label class="field" for="ano">
           <span>Ano</span>
-          <input type="text" inputmode="numeric" disabled />
+          <input
+            id="ano"
+            type="text"
+            inputmode="numeric"
+            maxlength="4"
+            autocomplete="off"
+            formControlName="ano"
+            [attr.aria-invalid]="fieldError('ano') ? 'true' : null"
+            [attr.aria-describedby]="fieldError('ano') ? 'ano-error' : null"
+          />
+          @if (fieldError('ano'); as error) {
+            <small class="field-error error-cell" id="ano-error">{{ error }}</small>
+          }
         </label>
-        <label class="field">
+
+        <label class="field" for="codigoProduto">
           <span>Produto</span>
-          <select disabled>
-            <option>-- Selecione --</option>
+          <select
+            id="codigoProduto"
+            formControlName="codigoProduto"
+            [attr.aria-invalid]="fieldError('codigoProduto') ? 'true' : null"
+            [attr.aria-describedby]="fieldError('codigoProduto') ? 'produto-error' : null"
+          >
+            <option [ngValue]="null">-- Selecione --</option>
+            @for (product of products(); track product.codigoProduto) {
+              <option [ngValue]="product.codigoProduto">
+                {{ product.descricaoProduto ?? '' }}
+              </option>
+            }
           </select>
+          @if (productsState() === 'loading') {
+            <small class="field-status results-summary" role="status">
+              Carregando produtos...
+            </small>
+          }
+          @if (productErrorMessage(); as error) {
+            <span class="field-feedback error-cell" role="alert">
+              <small>{{ error }}</small>
+              <button class="retry-button field-retry" type="button" (click)="retryProducts()">
+                Tentar novamente
+              </button>
+            </span>
+          }
+          @if (fieldError('codigoProduto'); as error) {
+            <small class="field-error error-cell" id="produto-error">{{ error }}</small>
+          }
         </label>
-        <label class="field">
+
+        <label class="field" for="codigoCosif">
           <span>Cosif</span>
-          <select disabled>
-            <option>-- Selecione --</option>
+          <select
+            id="codigoCosif"
+            formControlName="codigoCosif"
+            [attr.aria-invalid]="fieldError('codigoCosif') ? 'true' : null"
+            [attr.aria-describedby]="fieldError('codigoCosif') ? 'cosif-error' : null"
+          >
+            <option [ngValue]="null">-- Selecione --</option>
+            @for (cosif of cosifs(); track cosif.codigoCosif) {
+              <option [ngValue]="cosif.codigoCosif">
+                {{ cosif.codigoCosif }} - ({{ cosif.codigoClassificacao ?? '' }})
+              </option>
+            }
           </select>
+          @if (cosifsState() === 'loading') {
+            <small class="field-status results-summary" role="status">
+              <span class="spinner" aria-hidden="true"></span>
+              Carregando COSIFs...
+            </small>
+          }
+          @if (cosifErrorMessage(); as error) {
+            <span class="field-feedback error-cell" role="alert">
+              <small>{{ error }}</small>
+              <button class="retry-button field-retry" type="button" (click)="retryCosifs()">
+                Tentar novamente
+              </button>
+            </span>
+          }
+          @if (fieldError('codigoCosif'); as error) {
+            <small class="field-error error-cell" id="cosif-error">{{ error }}</small>
+          }
         </label>
-        <label class="field">
+
+        <label class="field" for="valor">
           <span>Valor</span>
-          <input type="text" disabled />
+          <input
+            id="valor"
+            type="text"
+            inputmode="decimal"
+            autocomplete="off"
+            formControlName="valor"
+            (blur)="formatValueOnBlur()"
+            [attr.aria-invalid]="fieldError('valor') ? 'true' : null"
+            [attr.aria-describedby]="fieldError('valor') ? 'valor-error' : null"
+          />
+          @if (fieldError('valor'); as error) {
+            <small class="field-error error-cell" id="valor-error">{{ error }}</small>
+          }
         </label>
-        <label class="field description-field">
+
+        <label class="field description-field" for="descricao">
           <span>Descrição</span>
-          <textarea rows="3" disabled></textarea>
+          <textarea
+            id="descricao"
+            rows="3"
+            maxlength="50"
+            formControlName="descricao"
+            [attr.aria-invalid]="fieldError('descricao') ? 'true' : null"
+            [attr.aria-describedby]="fieldError('descricao') ? 'descricao-error' : null"
+          ></textarea>
+          @if (fieldError('descricao'); as error) {
+            <small class="field-error error-cell" id="descricao-error">{{ error }}</small>
+          }
         </label>
 
         <div class="form-actions" aria-label="Ações do movimento">
-          <button class="button button-secondary" type="button" disabled>Limpar</button>
-          <button class="button button-secondary" type="button" disabled>Novo</button>
-          <button class="button button-primary" type="button" disabled>Incluir</button>
+          <button
+            class="button button-secondary"
+            type="button"
+            [disabled]="formMode() !== 'including'"
+            (click)="clearForm()"
+          >
+            Limpar
+          </button>
+          <button
+            class="button button-secondary"
+            type="button"
+            [disabled]="formMode() === 'including'"
+            (click)="startNew()"
+          >
+            Novo
+          </button>
+          <button class="button button-primary" type="submit" [disabled]="!includeEnabled()">
+            Incluir
+          </button>
         </div>
-      </div>
+      </form>
     </section>
 
     <section class="panel movements-panel" aria-labelledby="movement-list-title">
