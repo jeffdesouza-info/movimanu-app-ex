@@ -17,6 +17,15 @@ Referência do exercício: `document/references/enunciado-movimentos-manuais.md`
 - Em `infrastructure`, implementar persistência JPA, mapeamento domínio/entidades, transações e configuração. Em `interfaces/rest`, concentrar controllers, DTOs, validação de entrada e tratamento de erros. Tipos Spring, inclusive paginação, não atravessam as portas.
 - No frontend, usar componentes standalone, Reactive Forms e serviços com HttpClient em `features/manual-movements`, respeitando as pastas existentes.
 
+### 2.1. Modelagem do domínio e contratos
+
+- Usar campos diretos: `String` para códigos e descrições, `int` para mês e ano, `Long` para lançamento, `BigDecimal` para valor e `Instant` para data/hora. Não criar tipos apenas para encapsular campos individuais.
+- Manter os modelos `Product`, `ProductCosif`, `ManualMovement` e `MovementDraft`. Os identificadores `ProductCosifId` e `ManualMovementId` têm componentes diretos, sem identificadores aninhados; `MovementDraft` recebe diretamente os seis dados de inclusão.
+- Validar nos construtores dos modelos; compartilhar as regras repetidas no auxiliar interno `ModelValidation`, sem dependências de frameworks. Códigos de produto e COSIF são obrigatórios, com comprimentos máximos de quatro e onze caracteres, sem exigir comprimento exato, converter para número ou completar códigos. Preservar zeros à esquerda e os espaços de descrições válidas.
+- No domínio, rejeitar valor nulo, zero, escala original maior que dois ou valor absoluto acima de `9999999999999999.99`. Após essas verificações, normalizar para duas casas sem arredondamento ou ponto flutuante. A validação textual de entrada permanece na fronteira REST, conforme a seção 4.2.
+- Manter `ProductQueryPort`, `ProductCosifQueryPort`, `ManualMovementQueryPort` e `ManualMovementInclusionPort`. Receber códigos como `String`, mês/ano e página como `int`; a consulta do maior lançamento retorna `Optional<Long>` e a inclusão recebe `ManualMovement`.
+- A consulta paginada retorna `MovementPage<ManualMovementProjection>`. Definir a projeção em `application/projection`, com os dados necessários à resposta de movimentos, inclusive a descrição do produto, usando tipos Java sem formatação REST. Manter `MovementPage<T>` com tamanho fixo de seis e os metadados contratados, sem criar um tipo específico para envolver apenas o número da página.
+
 ## 3. Persistência e inclusão concorrente
 
 - Mapear as chaves compostas de `PRODUTO_COSIF` e `MOVIMENTO_MANUAL` com `@EmbeddedId`, preservando os relacionamentos do modelo. Tratar códigos como texto, valores com `BigDecimal` e o número do lançamento com `Long`.

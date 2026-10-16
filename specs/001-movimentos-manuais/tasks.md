@@ -19,7 +19,7 @@ Os vínculos RF, RN e CA remetem a `specs/001-movimentos-manuais/spec.md`; os in
 
 ## 2. Backend
 
-- [ ] **T003 — Implementar domínio e portas.** Criar modelos, identificadores e contratos de consulta e inclusão. Aplicar as validações de negócio previstas na especificação, preservando precisão decimal e independência de Spring, JPA e HTTP.
+- [x] **T003 — Implementar domínio e portas.** Criar modelos com campos diretos, identificadores compostos sem aninhamento e contratos de consulta e inclusão, incluindo a projeção de movimentos com descrição do produto. Aplicar as validações de negócio previstas na especificação nos modelos, com compartilhamento interno das regras repetidas, preservando precisão decimal e independência de Spring, JPA e HTTP, conforme a seção 2.1 do plano.
 
   **Vínculos:** `RF-INC-05`, `RF-INC-06`, `RF-INC-11`, `RF-INC-12`; `CA-03`, `CA-06`, `CA-07`, `CA-12`, `CA-13`.
 - [ ] **T004 — Implementar persistência.** Criar entidades JPA, chaves compostas e mapeadores. Adicionar a restrição única por período/lançamento em nova migração, preservando a existente. Implementar a equivalência temporal de `SMALLDATETIME`; preparar dados demonstrativos exclusivos do ambiente local e fixtures isoladas para testes.

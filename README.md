@@ -2,7 +2,7 @@
 
 Base do sistema de Movimentos Manuais, preparada para uma API REST em Java 21 com Spring Boot, Spring Cloud, DDD e persistência H2, além de um frontend Angular.
 
-O backend já possui inicialização Spring Boot, JAR executável, perfis local e de testes e execução separada de testes unitários e de integração. O workspace Angular está inicializado com componentes standalone, Reactive Forms, HttpClient, ambientes, proxy local e testes iniciais. As funcionalidades de consulta e inclusão de movimentos permanecem pendentes.
+O backend já possui inicialização Spring Boot, JAR executável, perfis local e de testes, modelos de domínio e contratos de consulta e inclusão, com execução separada de testes unitários e de integração. O workspace Angular está inicializado com componentes standalone, Reactive Forms, HttpClient, ambientes, proxy local e testes iniciais. As funcionalidades de consulta e inclusão de movimentos permanecem pendentes.
 
 ## Estrutura
 
@@ -49,6 +49,14 @@ O backend já possui inicialização Spring Boot, JAR executável, perfis local 
 
 O serviço de movimentos manuais representa o primeiro bounded context. A organização interna separa domínio, aplicação, adaptadores de infraestrutura e interface REST. Novos microsserviços devem ser adicionados como módulos irmãos em `backend`.
 
+## Domínio e contratos
+
+Os modelos em `domain/model` usam campos diretos: `String` para códigos e descrições, `int` para mês e ano, `Long` para lançamento, `BigDecimal` para valor e `Instant` para data/hora. Os identificadores compostos têm componentes diretos e `MovementDraft` recebe os seis dados de inclusão.
+
+As validações ficam nos construtores dos modelos, com apoio do auxiliar interno `ModelValidation`. Os códigos preservam zeros à esquerda e respeitam comprimentos máximos de quatro e onze caracteres. O valor valida a escala original e os limites antes de ser normalizado para duas casas, sem arredondamento.
+
+As quatro portas em `application/port` definem consulta de produtos, COSIFs, movimentos e inclusão. A consulta de movimentos recebe a página como `int` e retorna `MovementPage<ManualMovementProjection>`; a projeção em `application/projection` inclui a descrição do produto. Domínio e contratos permanecem independentes de Spring, JPA e HTTP. Os casos de uso, adaptadores de persistência e endpoints ainda serão implementados.
+
 ## Pré-requisitos
 
 - Java 21.
@@ -80,14 +88,16 @@ Em Linux/macOS, use `./mvnw test`, `./mvnw clean verify` e barras `/` no caminho
 
 ## Validação do backend
 
-Na validação de inicialização reportada, `.\mvnw.cmd test` passou e `.\mvnw.cmd clean verify` terminou com **BUILD SUCCESS**. O JAR executável iniciou no perfil `local`, com H2 persistente e aplicação da migração `V1__create_manual_movement_schema.sql`. O teste de integração confirmou a inicialização com H2 em memória e o esquema migrado. Estes resultados registram a execução técnica informada, sem nova execução nesta atualização documental.
+Na validação reportada da conclusão do domínio e das portas, `.\mvnw.cmd test` passou e `.\mvnw.cmd clean verify` concluiu com sucesso. Os resultados abaixo foram informados pelo Codex; testes e build não foram executados novamente nesta atualização documental.
 
-| Grupo | Executados | Falhas | Ignorados |
-| --- | --- | --- | --- |
-| Unitários — Surefire (`*Test`) | 1 | 0 | 0 |
-| Integração — Failsafe (`*IT`) | 1 | 0 | 0 |
+| Grupo | Executados | Falhas | Erros | Ignorados |
+| --- | --- | --- | --- | --- |
+| Unitários — Surefire (`*Test`) | 22 | 0 | 0 | 0 |
+| Integração — Failsafe (`*IT`) | 1 | 0 | 0 | 0 |
 
-O teste unitário verifica a declaração do ponto de entrada Spring Boot; o teste de integração valida a inicialização com banco em memória e a existência da tabela `PRODUTO` após a migração.
+Os testes unitários verificam modelos, validações, projeção e paginação, além da declaração do ponto de entrada Spring Boot. O teste de integração confirma a inicialização com H2 em memória e a existência da tabela `PRODUTO` após a migração.
+
+Na preparação inicial do backend, o JAR executável iniciou no perfil `local`, com H2 persistente e aplicação da migração `V1__create_manual_movement_schema.sql`.
 
 Os caminhos abaixo são relativos a `backend/movimento-manual-service`:
 
@@ -101,11 +111,10 @@ Os caminhos abaixo são relativos a `backend/movimento-manual-service`:
 | Relatórios unitários HTML e XML | `target/site/jacoco-unit/index.html` e `target/site/jacoco-unit/jacoco.xml` |
 | Relatórios de integração HTML e XML | `target/site/jacoco-integration/index.html` e `target/site/jacoco-integration/jacoco.xml` |
 | Relatórios consolidados HTML e XML | `target/site/jacoco/index.html` e `target/site/jacoco/jacoco.xml` |
-| Log da inicialização local reportada | `target/run-smoke.stdout.log` |
 
-Os relatórios JaCoCo foram gerados e a verificação do limite de 100% de linhas passou, mas foram avaliadas **zero classes e zero linhas**. A única classe de produção existente, `MovimanuApplication`, está abrangida pela exclusão preexistente `*Application`. Portanto, ainda não há classes elegíveis para medir cobertura funcional; esse resultado não comprova cobertura funcional de 100%. A exigência de 100% no consolidado e as exclusões existentes permanecem mantidas para a evolução do backend.
+Na execução reportada, o JaCoCo consolidado registrou **90 de 90 linhas elegíveis cobertas (100%)**, com aprovação da verificação configurada e preservação das exclusões existentes de configuração e inicialização. A cobertura abrange o código implementado até esta etapa. Persistência JPA, casos de uso, contratos REST e comportamentos funcionais da interface permanecem nas próximas tarefas.
 
-Durante a execução reportada, o Flyway avisou que a versão resolvida do H2 era mais nova que a versão com a qual havia sido verificado. A migração e os testes passaram, mantendo-se as versões gerenciadas pelo projeto.
+Na validação inicial do backend, o Flyway avisou que a versão resolvida do H2 era mais nova que a versão com a qual havia sido verificado. A migração e os testes passaram, mantendo-se as versões gerenciadas pelo projeto.
 
 ## Frontend Angular
 
