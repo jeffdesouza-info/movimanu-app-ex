@@ -26,6 +26,13 @@ Referência do exercício: `document/references/enunciado-movimentos-manuais.md`
 - Manter `ProductQueryPort`, `ProductCosifQueryPort`, `ManualMovementQueryPort` e `ManualMovementInclusionPort`. Receber códigos como `String`, mês/ano e página como `int`; a consulta do maior lançamento retorna `Optional<Long>` e a inclusão recebe `ManualMovement`.
 - A consulta paginada retorna `MovementPage<ManualMovementProjection>`. Definir a projeção em `application/projection`, com os dados necessários à resposta de movimentos, inclusive a descrição do produto, usando tipos Java sem formatação REST. Manter `MovementPage<T>` com tamanho fixo de seis e os metadados contratados, sem criar um tipo específico para envolver apenas o número da página.
 
+### 2.2. Consultas
+
+- Implementar `ListProductsUseCase`, `ListProductCosifsUseCase` e `FindManualMovementsUseCase` como classes de aplicação independentes de frameworks. Conectá-las às portas por `QueryUseCaseConfiguration` na infraestrutura.
+- Na consulta de COSIFs, verificar a existência do produto pela porta própria antes de consultar os vínculos. Produto inexistente gera `ProductNotFoundException` na aplicação; produto existente sem COSIFs retorna lista vazia. O tratamento HTTP fica na interface REST.
+- Implementar os três adaptadores JPA de consulta em `infrastructure/persistence/adapter`, com repositórios Spring Data em `repository` e transações de leitura na infraestrutura. Listar produtos por código crescente e COSIFs do produto por código COSIF crescente.
+- Construir `ManualMovementProjection` na consulta JPQL com joins para produto/COSIF e produto, incluindo a descrição do produto sem consultas adicionais por linha. Aplicar a ordenação da seção 4.1 e a paginação da seção 4.3. Consultar o maior lançamento por mês e ano, independentemente de produto/COSIF.
+
 ## 3. Persistência e inclusão concorrente
 
 - Mapear as chaves compostas de `PRODUTO_COSIF` e `MOVIMENTO_MANUAL` com `@EmbeddedId`, preservando os relacionamentos do modelo. Tratar códigos como texto, valores com `BigDecimal` e o número do lançamento com `Long`.
@@ -76,6 +83,7 @@ Os nomes abaixo são exatos e usam `camelCase`. Inteiros são números JSON; có
 - O tamanho da página é fixo: `size=6`, independentemente da quantidade de itens retornada. Não expor parâmetros para alterar tamanho ou ordenação.
 - `totalElements` é a quantidade total da consulta e `totalPages` é o arredondamento para cima de `totalElements / 6`; ambos são zero quando não há registros.
 - Página além dos resultados retorna `content=[]`, mantendo `page` solicitado, `size=6` e os totais reais, sem redirecionar para outra página.
+- No adaptador, calcular o deslocamento com `long` e consultar o total antes de aplicar a paginação JPA. Se o deslocamento for maior ou igual ao total, retornar a página vazia sem executar a busca paginada. Esse comportamento também se aplica a páginas além dos resultados cujo deslocamento exceda `Integer.MAX_VALUE`, sem impor um limite adicional ao parâmetro `page`. Preservar testes unitários e de integração com sete movimentos e páginas `357913942` e `Integer.MAX_VALUE`.
 
 Exemplo: com sete movimentos, solicitar `page=2` retorna `200` com `{"content":[],"page":2,"size":6,"totalElements":7,"totalPages":2}`.
 

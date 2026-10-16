@@ -25,7 +25,7 @@ Os vínculos RF, RN e CA remetem a `specs/001-movimentos-manuais/spec.md`; os in
 - [x] **T004 — Implementar persistência.** Criar entidades JPA, chaves compostas e mapeadores. Adicionar a restrição única por período/lançamento em nova migração, preservando a existente. Implementar a equivalência temporal de `SMALLDATETIME`; preparar dados demonstrativos exclusivos do ambiente local e fixtures isoladas para testes.
 
   **Vínculos:** `RF-CON-02`; `RF-INC-05`, `RF-INC-06`, `RF-INC-11`, `RF-INC-12`; `RN-02`, `RN-03`, `RN-05`; `CA-04`, `CA-05`, `CA-06`, `CA-12`, `CA-13`.
-- [ ] **T005 — Implementar consultas.** Criar casos de uso e adaptadores para produtos, COSIFs por produto e movimentos. Usar projeção com descrição do produto, paginação de seis registros e ordenação determinística conforme o plano, sem tipos Spring nas portas.
+- [x] **T005 — Implementar consultas.** Criar casos de uso e adaptadores para produtos, COSIFs por produto e movimentos. Usar projeção com descrição do produto, paginação de seis registros e ordenação determinística conforme o plano, sem tipos Spring nas portas. Preservar a página solicitada e os totais reais quando não houver conteúdo, inclusive em páginas além dos resultados com deslocamento superior a `Integer.MAX_VALUE`, conforme a seção 4.3 do plano.
 
   **Vínculos:** `RF-CON-02` a `RF-CON-05`; `RF-INC-05`; `RF-API-01`; `CA-01`, `CA-02`, `CA-03`, `CA-11`.
 - [ ] **T006 — Implementar inclusão concorrente.** Validar o vínculo produto/COSIF, calcular o próximo lançamento e verificar seu limite numérico. Gerar data/hora com `Clock` em UTC e usuário `TESTE`. Garantir gravação atômica e repetir somente colisões da restrição única prevista, com transações independentes e até três tentativas no total.
