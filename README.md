@@ -2,7 +2,7 @@
 
 Sistema de Movimentos Manuais com API REST em Java 21, Spring Boot, Spring Cloud, DDD e persistência H2, além de um frontend Angular para consulta e inclusão.
 
-O backend já possui inicialização Spring Boot, JAR executável, perfis local e de testes, modelos de domínio, persistência JPA, casos de uso de consulta e inclusão concorrente e os quatro endpoints REST, com validações e erros em `ProblemDetail`. A validação integrada do backend está concluída, com execução separada de testes unitários e de integração. O frontend Angular já possui consulta automática de movimentos, grid de sete colunas, paginação e estados de carregamento, erro e ausência de registros. O formulário interativo carrega produtos/COSIFs, valida os campos e integra a inclusão ao backend, com bloqueio durante o envio, recuperação em falha e atualização do grid após sucesso. A validação unitária do frontend está concluída, com 28 testes aprovados em três arquivos. A validação final com a aplicação iniciada e a persistência após reinício permanece pendente.
+O backend já possui inicialização Spring Boot, JAR executável, perfis local e de testes, modelos de domínio, persistência JPA, casos de uso de consulta e inclusão concorrente e os quatro endpoints REST, com validações e erros em `ProblemDetail`. A validação integrada do backend está concluída, com execução separada de testes unitários e de integração. O frontend Angular já possui consulta automática de movimentos, grid de sete colunas, paginação e estados de carregamento, erro e ausência de registros. O formulário interativo carrega produtos/COSIFs, valida os campos e integra a inclusão ao backend, com bloqueio durante o envio, recuperação em falha e atualização do grid após sucesso. A validação unitária do frontend está concluída, com 28 testes aprovados em três arquivos. A validação final está concluída, incluindo conferência manual da aplicação em execução e persistência após reinício.
 
 ## Estrutura
 
@@ -163,7 +163,7 @@ Em Linux/macOS, use `./mvnw test`, `./mvnw clean verify` e barras `/` no caminho
 
 ## Validação do backend
 
-Na validação final da T008, o Codex reportou sucesso em `.\mvnw.cmd test` e `.\mvnw.cmd clean verify`. Os XMLs Surefire/Failsafe fornecidos foram conferidos e confirmam os resultados abaixo, sem sobreposição entre os grupos. Os relatórios de integração registram a JVM em `America/Sao_Paulo`. Testes e build não foram executados novamente nesta atualização documental.
+Na validação final da T013, em 16/10/2026, o Codex executou `.\mvnw.cmd clean verify`, com `BUILD SUCCESS` e código de saída zero. O log e os XMLs Surefire/Failsafe fornecidos foram conferidos e confirmam os resultados abaixo, sem sobreposição entre os grupos. Os relatórios unitários e de integração registram a JVM em `America/Sao_Paulo`. Testes e build não foram executados novamente nesta atualização documental.
 
 | Grupo | Suítes | Executados | Falhas | Erros | Ignorados |
 | --- | --- | --- | --- | --- | --- |
@@ -209,11 +209,11 @@ Os XMLs JaCoCo fornecidos e conferidos apresentam a seguinte cobertura de linhas
 | Integração | 489/551 | 62 | 88,75% |
 | Consolidado | **551/551** | **0** | **100%** |
 
-O consolidado corresponde à união das linhas cobertas e das duas sessões registradas nos relatórios por grupo, com o mesmo conjunto de classes e as exclusões de configuração e inicialização. A exigência de 100% de linhas aplica-se ao consolidado; o Codex reportou aprovação da verificação configurada.
+O consolidado corresponde à união das linhas cobertas e das duas sessões registradas nos relatórios por grupo, com o mesmo conjunto de classes e as exclusões de configuração e inicialização. A exigência de 100% de linhas aplica-se ao consolidado; o log Maven da T013 confirma a aprovação da verificação configurada.
 
-Na validação temporal da T007, o Codex reportou `clean verify` aprovado com a JVM em `UTC` e em `America/Sao_Paulo`, incluindo as regressões SQL/JPA/projeção/REST. A T008 preservou o código de produção e complementou os testes REST existentes. A validação integrada do backend está concluída. A consulta visual, o fluxo de inclusão e a validação unitária do frontend também estão concluídos. A validação final da aplicação permanece pendente.
+Na validação temporal da T007, o Codex reportou `clean verify` aprovado com a JVM em `UTC` e em `America/Sao_Paulo`, incluindo as regressões SQL/JPA/projeção/REST. A T008 preservou o código de produção e complementou os testes REST existentes. A validação integrada do backend está concluída. A consulta visual, o fluxo de inclusão e a validação unitária do frontend também estão concluídos. A T013 reconfirmou os resultados automatizados e concluiu a validação com a aplicação iniciada e banco persistente, conforme o registro de validação final abaixo.
 
-Na execução atual, o Flyway avisou que o H2 `2.4.240` é mais recente que a versão verificada, `2.3.232`. A validação das migrações e os testes passaram, mantendo-se as versões gerenciadas pelo projeto.
+Na execução da T013, o Flyway avisou que o H2 `2.4.240` é mais recente que a versão verificada, `2.3.232`. A validação das migrações e os testes passaram, mantendo-se as versões gerenciadas pelo projeto.
 
 ## Frontend Angular
 
@@ -258,6 +258,8 @@ npm start
 
 A aplicação é servida em `http://localhost:4200`. O proxy configurado em `proxy.conf.json` e associado ao alvo `serve` encaminha `/api/v1/**` para `http://localhost:8080`. Inicie o backend separadamente para usar esse encaminhamento.
 
+Use terminais separados para backend e frontend, mantendo os processos em primeiro plano e encerrando-os com `Ctrl+C` ao terminar. Uma instância já ativa ocupa sua porta: confira os processos associados a `8080` e `4200` antes de iniciar outras instâncias. No Windows, encerre também a instância Java que usa o JAR antes de executar `clean verify`, para liberar o arquivo de `target` para exclusão.
+
 ### Ambientes
 
 `src/environments/environment.ts` e `src/environments/environment.production.ts` definem `apiBaseUrl: '/api/v1'`. O build de produção substitui o arquivo de desenvolvimento pelo de produção. O proxy local se aplica ao servidor de desenvolvimento.
@@ -294,11 +296,11 @@ Em falha do POST, o componente retorna ao modo de inclusão e restaura a ediçã
 
 Após confirmação de sucesso, o formulário fica vazio e desabilitado, Produto/Cosif retornam à seleção nula e a tela volta ao modo de consulta. O reset publica explicitamente o valor nulo de Produto para atualizar `distinctUntilChanged`, permitindo iniciar uma nova inclusão com o mesmo produto. O componente consulta a primeira página do grid; se esse GET falhar, Tentar novamente repete somente essa consulta, sem reenviar o movimento já incluído.
 
-### Validação do frontend — T012
+### Testes e build do frontend
 
-Na execução da T012, o Codex reportou `npm ci` concluído com 296 pacotes instalados pelo lockfile e terminal usando Node.js `24.21.0` e npm `11.19.0`. As capturas fornecidas confirmam `npm test` aprovado com **três arquivos e 28 testes** e `npm run build` concluído, sem avisos nas saídas apresentadas. O Codex também reportou `git diff --check` sem problemas. Os comandos foram executados em `frontend/movimanu-web`.
+Na execução final da T013, os logs fornecidos confirmam `npm test` aprovado com **três arquivos e 28 testes** e `npm run build` concluído, ambos com código de saída zero e sem avisos nas saídas aprovadas. O terminal registrou Node.js `24.21.0` e npm `11.19.0`. Os comandos foram executados em `frontend/movimanu-web`. A instalação por `npm ci` na T012 havia registrado 296 pacotes pelo lockfile.
 
-A revisão comparou os fontes com a implementação aprovada da T011 e confirmou alterações somente nos dois arquivos de testes de validadores e do componente. As regressões anteriores foram preservadas; foram acrescentados seis testes do componente e ampliados os casos dos validadores e da restauração após falha do POST. Testes e build não foram executados novamente nesta revisão ou atualização documental. A suíte não configura relatório persistido de testes; as evidências recebidas são as saídas do terminal em captura e o relato da execução.
+A T012 complementou somente os dois arquivos de testes de validadores e do componente, preservando as regressões anteriores, acrescentando seis testes do componente e ampliando os casos dos validadores e da restauração após falha do POST. A T013 reaproveitou essa suíte. A suíte não configura relatório persistido próprio de testes; a coleta da T013 preservou as saídas do terminal em arquivos de log. Testes e build não foram executados novamente nesta atualização documental. As tentativas inicialmente bloqueadas por acesso a diretórios foram separadas das execuções aprovadas.
 
 | Arquivo, relativo ao workspace | Testes nos fontes revisados | Cenários |
 | --- | --- | --- |
@@ -315,15 +317,70 @@ Os complementos da T012 verificam:
 
 As regressões reaproveitadas conferem carregamento, erro e nova tentativa de COSIFs do produto atual, cancelamento de consultas obsoletas e limpeza durante a consulta. Limpar permite selecionar novamente o mesmo produto tanto após uma consulta concluída quanto pendente. Duas inclusões consecutivas do mesmo produto verificam formulário vazio e desabilitado após cada sucesso, novo GET de COSIFs no segundo ciclo e habilitação sem seleção automática. Os testes de envio mantêm as verificações de bloqueio dos seis campos e dos três botões, ausência de POST adicional, restauração com valores e seleções preservados e nova tentativa somente do GET após sucesso. A consulta e a paginação continuam cobertas, incluindo metadados e páginas vazias além dos resultados.
 
-A suíte exercita o componente e seus contratos HTTP com requisições simuladas. A revisão dos fontes confirmou as asserções e o total de 28 testes. A conferência isolada de 25 exemplos monetários realizada na T010 permanece complementar à suíte Angular.
+A suíte exercita o componente e seus contratos HTTP com requisições simuladas. A revisão dos fontes confirmou as asserções e o total de 28 testes; o log da T013 confirmou a nova execução aprovada. A integração com o backend em execução também foi conferida manualmente, conforme a seção de validação final.
 
-Na conferência visual da T009, a captura fornecida da aplicação em `http://localhost:4200` confirmou, em desktop e com a consulta vazia, a disposição dos campos e botões, os cabeçalhos das sete colunas sem sobreposição e a indicação de ausência de movimentos. Essa captura antecede o formulário interativo e o fluxo de inclusão. A interação em navegador com o backend, a confirmação completa dos critérios de aceite e a persistência após reinício permanecem para a T013.
+A conferência visual da T009 registrou o layout desktop e o estado vazio da consulta. Na T013, capturas e relatos da interação em `http://localhost:4200` confirmaram a renderização Angular e os fluxos com o backend real, incluindo seleção, validação, limpeza, inclusão, ordenação, paginação e recuperação de falhas.
 
 A saída de build informada fica em `dist/movimanu-web/browser/`, relativa ao workspace, correspondendo a `frontend/movimanu-web/dist/movimanu-web/browser/` a partir da raiz do repositório. Os diretórios `dist/`, `node_modules/` e `.angular/cache/` são ignorados pelo Git.
 
-As tarefas T009, T010, T011 e T012 estão concluídas. A T013 permanece pendente para a validação final da aplicação e o registro das evidências correspondentes.
+As tarefas de implementação e validação do frontend estão concluídas. O fechamento da T013 combina as evidências automatizadas, HTTP e manuais registradas a seguir.
 
 Referências técnicas: [configuração do workspace Angular](https://angular.dev/reference/configs/workspace-config), [build](https://angular.dev/cli/build) e [proxy de desenvolvimento](https://angular.dev/tools/cli/serve).
+
+## Validação final — T013
+
+Concluída em **16/10/2026**, considerando o horário de `America/Sao_Paulo`. O fechamento combina execução automatizada pelo Codex, revisão dos logs/XMLs/respostas HTTP e conferência manual realizada pelo responsável pelo projeto no Chrome. **T001 a T013 estão concluídas.** A publicação e a escolha do provedor de cloud continuam fora desta validação local.
+
+### Aplicação iniciada e persistência
+
+O backend iniciou no perfil `local`, porta `8080`, a partir de `backend/movimento-manual-service`, com `H2_URL` absoluta apontando para o banco em arquivo `.t013-evidence/h2/movimanu`, na raiz do projeto. As duas inicializações usaram o mesmo diretório de trabalho e a mesma URL. Esse banco isolado foi usado também na conferência manual; o banco padrão não foi usado nessa verificação.
+
+Os GETs de produtos e dos COSIFs de `0001` retornaram `200`, com dois produtos e dois COSIFs. A consulta inicial de movimentos estava vazia. O POST de `T013-validacao-20261016`, mês 10/ano 2026, produto `0001`, COSIF `10000000001` e valor textual `"321.47"`, retornou `201`. Após reiniciar o backend, o GET retornou `200` com o mesmo movimento. A revisão comparou independentemente as respostas e confirmou os **dez campos idênticos**, incluindo lançamento `"1"`, usuário `TESTE` e data `2026-10-16T21:51:00Z`.
+
+O frontend iniciou por `npm start`, com compilação de desenvolvimento concluída e proxy operacional. O HTML e o proxy responderam `200`; a renderização foi confirmada posteriormente pelas capturas da interface em uso. Para reencontrar os registros dessa conferência, mantenha a mesma `H2_URL`; a URL padrão depende do diretório de trabalho.
+
+### Conferência manual e critérios de aceite
+
+Foram conferidos o bloqueio inicial, Novo, seleções pendentes, troca de Produto, preservação dos demais campos e Limpar. As validações de mês, ano, valor e descrição exibiram mensagens junto aos campos e impediram inclusão inválida. Após sucesso, o formulário ficou vazio e desabilitado, somente Novo ficou habilitado e o grid foi atualizado.
+
+Com sete registros, foram observados seis na primeira página e um na segunda, dezembro/2026 antes de outubro/2026 e janeiro/2026 antes de dezembro/2025. Os lançamentos de janeiro/2026 seguiram 1, 2 e 3 entre os produtos A e B. O limite `9999999999999999,99` foi incluído e exibido sem perda de precisão.
+
+O modo Offline do DevTools simulou falha de consulta de COSIFs e falha de envio, com mensagens, dados preservados e recuperação. A repetição de COSIFs disponibilizou as opções sem seleção automática. Com latência de 10.000 ms, download/upload de 1.000 kbit/s, foram observados os seis campos e os três botões bloqueados, com indicação de inclusão em andamento. A recuperação do envio produziu uma única inclusão bem-sucedida (`201`), seguida de um GET (`200`), com `T013-manual-07`, lançamento 4 de janeiro/2026, valor `10,00` e **oito movimentos** no total. Ao terminar, a limitação de rede foi removida.
+
+Os critérios foram confirmados pelo conjunto de métodos abaixo; os cenários de integração e contrato indicados como automatizados não foram todos repetidos manualmente.
+
+| Critério | Evidência de atendimento |
+| --- | --- |
+| CA-01 — Consulta | Tela renderizada, sete colunas e ordem entre anos conferidas manualmente; testes de componente e consulta aprovados. |
+| CA-02 — Paginação | Navegação manual com seis itens e um item; testes de componente e integração cobrem metadados e páginas além dos resultados. |
+| CA-03 — Seleções | Produto/COSIF, rótulos, ausência de seleção automática e troca conferidos na tela; rejeição de par sem vínculo coberta pelas suítes. |
+| CA-04 — Numeração | Primeiro lançamento, lacunas, períodos e concorrência cobertos por testes; sequência entre produtos também observada manualmente. |
+| CA-05 — Persistência | POST, dez campos iguais após reinício e atualização da consulta confirmados por HTTP; reset e bloqueio após sucesso conferidos na tela. |
+| CA-06 — Validação | Rejeições automatizadas e mensagens/bloqueio manual para mês 0/13, ano 0/não inteiro, valor inválido e descrição sem conteúdo. |
+| CA-07 — Limites e sinal | Meses 1/12 e valores positivos/negativos incluídos; meses 0/13 e zero rejeitados na interface, complementando os testes de limites. |
+| CA-08 — Limpeza | Campos e seleções limpos manualmente, mantendo inclusão e Cosif aguardando Produto; regressões de limpeza aprovadas. |
+| CA-09 — Envio | Falha de rede, preservação e bloqueio durante POST conferidos manualmente; falha confirmada da API e restauração também cobertas por testes. |
+| CA-10 — COSIFs | Erro, nova tentativa e recuperação sem seleção automática conferidos manualmente; carregamento e descarte de consultas obsoletas cobertos por testes. |
+| CA-11 — REST | Suítes de integração conferem DTOs, erros, página inválida e além dos resultados; GETs/POST e proxy também verificados com a aplicação iniciada. |
+| CA-12 — Valor | Formatos e payload textual exato cobertos por testes; sinal, zero, formato inválido, conversão ponto/vírgula e valor máximo conferidos na interface. |
+| CA-13 — Descrição | Rejeição de vazio/espaços conferida manualmente; preservação de espaços válidos e limite total de 50 caracteres confirmados pelas suítes frontend/backend. |
+
+### Evidências recebidas e caminhos
+
+A coleta foi fornecida em `t013-evidence.zip` e `t013-evidence-complement.zip`; capturas e relatos da conferência manual foram recebidos separadamente. O `RESUMO.md` do complemento foi produzido antes dessa conferência manual e conserva o status daquela coleta. O fechamento acima incorpora as evidências manuais posteriores.
+
+Os relatórios XML mantêm os caminhos de `backend/movimento-manual-service/target/` já indicados na seção do backend. Os seguintes arquivos de coleta são relativos à raiz do projeto:
+
+| Evidência | Arquivo |
+| --- | --- |
+| Execução Maven | `.t013-evidence/maven-clean-verify.log` |
+| Testes Angular | `.t013-evidence/frontend-npm-test-escalated.log` |
+| Build de produção | `.t013-evidence/frontend-npm-build-escalated.log` |
+| Configuração e reinício do backend | `.t013-evidence/backend-run-config.txt` e `.t013-evidence/backend-after-restart.stdout.log` |
+| POST e comparação após reinício | `.t013-evidence/http-post-response.json` e `.t013-evidence/http-persistence-comparison.json` |
+| Servidor de desenvolvimento aprovado | `.t013-evidence/frontend-dev-server-complement-retry.stdout.log` |
+
+No ZIP complementar, logs e respostas foram agrupados em `evidence/backend/` e `evidence/frontend/`; os XMLs preservam a estrutura do módulo. As tentativas anteriores com falha de compilação por acesso a diretórios estão separadas em `evidence/frontend/previous-attempts/`. As capturas de paginação, falha de COSIF, falha de envio, POST pendente e estado final documentam a etapa manual.
 
 ## Publicação em repositório Maven
 
@@ -373,6 +430,6 @@ As evidências de teste abaixo usam caminhos relativos a `backend/movimento-manu
 | `src/test/java/com/antlia/movimanu/integration/JpaPersistenceIT.java` | Gravação e releitura do horário arredondado, relacionamentos compostos, valor decimal e rejeição de lançamento repetido no período entre produtos diferentes. |
 | `src/test/java/com/antlia/movimanu/integration/JpaQueryAdaptersIT.java` e `ManualMovementRestIT.java` no mesmo diretório | Leitura do literal SQL `2026-01-01 12:00:00` como `2026-01-01T12:00:00Z` na entidade, na projeção e na resposta REST. |
 
-A equivalência temporal descrita corresponde ao comportamento implementado no adaptador e aos cenários de teste acima; o domínio SQL sobre `TIMESTAMP(0)` continua sendo apenas a representação do tipo no H2. A validação final da aplicação deverá reconfirmar esses testes e a execução com banco persistente.
+A equivalência temporal descrita corresponde ao comportamento implementado no adaptador e aos cenários de teste acima; o domínio SQL sobre `TIMESTAMP(0)` continua sendo apenas a representação do tipo no H2. A execução da T013 reconfirmou os quatro testes unitários do conversor e os testes de persistência, consulta e REST. Os XMLs aprovados e a conferência das evidências confirmam arredondamento ao minuto, faixa de datas, virada de dia/ano e leitura em UTC; a preservação do movimento após reinício foi verificada separadamente no H2 persistente.
 
 Referências técnicas: [TIMESTAMP no H2](https://h2database.com/html/datatypes.html) e [SMALLDATETIME no SQL Server](https://learn.microsoft.com/en-us/sql/t-sql/data-types/smalldatetime-transact-sql).
